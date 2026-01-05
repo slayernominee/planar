@@ -12,7 +12,7 @@ Planar is a sleek, high-performance open-source day planning application built w
 
 ## 📱 Showcase
 
-| <img src=".github/showcase/1.webp" width="250"> | <img src=".github/showcase/2.webp" width="250"> | <img src=".github/showcase/3.webp" width="250"> |
+| <img src=".github/showcase/1.webp" width="250"> | <img src=".github/showcase/2.webp" width="250"> | <img src=".github/showcase/3.webp" width="250"> | <img src=".github/showcase/4.webp" width="250"> |
 
 ## ✨ Key Features
 

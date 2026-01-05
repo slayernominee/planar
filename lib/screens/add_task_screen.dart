@@ -31,6 +31,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   late int _selectedColor;
   int? _selectedIconCodePoint;
   late RecurrenceType _recurrence;
+  int? _reminderMinutes;
   List<Subtask> _subtasks = [];
 
   final List<IconData> _icons = [
@@ -101,6 +102,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     if (_endTime == null && _startTime != null) {
       _endTime = _startTime!.add(const Duration(minutes: 15));
     }
+    _reminderMinutes = widget.taskToEdit?.reminderMinutes;
   }
 
   @override
@@ -184,6 +186,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       isDone: widget.taskToEdit?.isDone ?? false,
       iconCodePoint: _selectedIconCodePoint,
       seriesId: widget.taskToEdit?.seriesId,
+      reminderMinutes: _reminderMinutes,
     );
 
     final provider = context.read<TaskProvider>();
@@ -348,6 +351,40 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       case RecurrenceType.none:
         return 'No repeat';
     }
+  }
+
+  void _showReminderPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Reminder",
+                style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            ...[null, 5, 10, 15, 30, 60].map((mins) {
+              String label = mins == null ? 'None' : '$mins minutes before';
+              return ListTile(
+                title: Text(label, style: const TextStyle(color: Colors.black)),
+                trailing: _reminderMinutes == mins
+                    ? const Icon(Icons.check, color: Colors.teal)
+                    : null,
+                onTap: () {
+                  setState(() => _reminderMinutes = mins);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList()
+          ],
+        ),
+      ),
+    );
   }
 
   void _showRecurrencePicker() {
@@ -612,6 +649,43 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         const SizedBox(width: 12),
                         Text(
                           _getRecurrenceLabel(),
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Reminder
+            InkWell(
+              onTap: _showReminderPicker,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.notifications_outlined,
+                            color: Colors.black54),
+                        const SizedBox(width: 12),
+                        Text(
+                          _reminderMinutes == null
+                              ? 'No reminder'
+                              : '$_reminderMinutes minutes before',
                           style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,

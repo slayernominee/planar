@@ -3,6 +3,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../db/database_helper.dart';
 import '../providers/task_provider.dart';
+import '../models/task.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -50,6 +52,74 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _addSampleTasks(BuildContext context) async {
+    final now = DateTime.now();
+    final provider = context.read<TaskProvider>();
+
+    final samples = [
+      Task(
+        title: 'Morning Exercise',
+        description: '30 mins of yoga',
+        date: now,
+        startTime: DateTime(now.year, now.month, now.day, 8, 0),
+        endTime: DateTime(now.year, now.month, now.day, 8, 30),
+        colorValue: Colors.orange.value,
+        iconCodePoint: Icons.fitness_center.codePoint,
+      ),
+      Task(
+        title: 'Team Meeting',
+        description: 'Sync with the design team',
+        date: now,
+        startTime: DateTime(now.year, now.month, now.day, 10, 0),
+        endTime: DateTime(now.year, now.month, now.day, 11, 0),
+        colorValue: Colors.blue.value,
+        iconCodePoint: Icons.group.codePoint,
+      ),
+      Task(
+        title: 'Lunch Break',
+        date: now,
+        startTime: DateTime(now.year, now.month, now.day, 12, 30),
+        endTime: DateTime(now.year, now.month, now.day, 13, 30),
+        colorValue: Colors.green.value,
+        iconCodePoint: Icons.restaurant.codePoint,
+      ),
+      Task(
+        title: 'Deep Work',
+        description: 'Focus on core feature implementation',
+        date: now,
+        startTime: DateTime(now.year, now.month, now.day, 14, 0),
+        endTime: DateTime(now.year, now.month, now.day, 16, 0),
+        colorValue: Colors.purple.value,
+        iconCodePoint: Icons.code.codePoint,
+      ),
+      Task(
+        title: 'Quick Catchup',
+        date: now,
+        startTime: DateTime(now.year, now.month, now.day, 16, 15),
+        endTime: DateTime(now.year, now.month, now.day, 16, 20),
+        colorValue: Colors.red.value,
+        iconCodePoint: Icons.chat.codePoint,
+      ),
+    ];
+
+    for (var task in samples) {
+      await provider.addTask(task);
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('5 Sample tasks added')),
+      );
+    }
+  }
+
+  void _testNotification() {
+    NotificationService.instance.showInstantNotification(
+      'Developer Test',
+      'This is a test notification from the developer menu!',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,6 +162,54 @@ class SettingsScreen extends StatelessWidget {
             ),
             subtitle: const Text('Delete all tasks and data'),
             onTap: () => _clearDatabase(context),
+          ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Developer',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bug_report, color: Colors.orange),
+            title: const Text('Add Sample Tasks'),
+            subtitle: const Text('Insert 5 dummy tasks for today'),
+            onTap: () => _addSampleTasks(context),
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.notification_important, color: Colors.purple),
+            title: const Text('Test Notification'),
+            subtitle: const Text('Send an instant notification'),
+            onTap: _testNotification,
+          ),
+          ListTile(
+            leading: const Icon(Icons.timer, color: Colors.blueGrey),
+            title: const Text('Test Scheduled Task'),
+            subtitle: const Text('Schedule a reminder for 10 seconds from now'),
+            onTap: () async {
+              await NotificationService.instance.testTaskNotification();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Test task scheduled for 10s from now')),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.hourglass_bottom, color: Colors.blue),
+            title: const Text('Test Delayed Notification'),
+            subtitle:
+                const Text('Wait 5s in code then show instant notification'),
+            onTap: () async {
+              await NotificationService.instance.testDelayedNotification();
+            },
           ),
           const Divider(),
           ListTile(

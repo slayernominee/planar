@@ -66,6 +66,7 @@ class Task {
   int colorValue;
   String? seriesId;
   int? iconCodePoint;
+  int? reminderMinutes;
 
   Task({
     String? id,
@@ -80,6 +81,7 @@ class Task {
     this.colorValue = 0xFF2196F3,
     this.seriesId,
     this.iconCodePoint,
+    this.reminderMinutes,
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
@@ -95,6 +97,7 @@ class Task {
       'colorValue': colorValue,
       'seriesId': seriesId,
       'iconCodePoint': iconCodePoint,
+      'reminderMinutes': reminderMinutes,
     };
   }
 
@@ -111,6 +114,7 @@ class Task {
       colorValue: map['colorValue'],
       seriesId: map['seriesId'],
       iconCodePoint: map['iconCodePoint'],
+      reminderMinutes: map['reminderMinutes'],
     );
   }
 
@@ -127,6 +131,7 @@ class Task {
     int? colorValue,
     String? seriesId,
     int? iconCodePoint,
+    int? reminderMinutes,
   }) {
     return Task(
       id: id ?? this.id,
@@ -141,6 +146,7 @@ class Task {
       colorValue: colorValue ?? this.colorValue,
       seriesId: seriesId ?? this.seriesId,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      reminderMinutes: reminderMinutes ?? this.reminderMinutes,
     );
   }
 }

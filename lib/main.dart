@@ -4,10 +4,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'providers/task_provider.dart';
 import 'screens/home_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting();
+  await NotificationService.instance.init();
   runApp(const DayPlannerApp());
 }
 

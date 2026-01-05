@@ -25,7 +25,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -38,6 +38,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await db.execute('ALTER TABLE tasks ADD COLUMN iconCodePoint INTEGER');
+    }
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE tasks ADD COLUMN reminderMinutes INTEGER');
     }
   }
 
@@ -65,7 +68,8 @@ CREATE TABLE tasks (
   recurrence $integerType,
   colorValue $integerType,
   seriesId $textNullableType,
-  iconCodePoint $integerNullableType
+  iconCodePoint $integerNullableType,
+  reminderMinutes $integerNullableType
 )
 ''');
 

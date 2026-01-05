@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/task.dart';
 import '../db/database_helper.dart';
+import '../services/notification_service.dart';
 
 class TaskProvider with ChangeNotifier {
   Map<String, List<Task>> _tasksCache = {};
@@ -49,6 +50,8 @@ class TaskProvider with ChangeNotifier {
     }
 
     await DatabaseHelper.instance.createTask(taskToSave);
+    await NotificationService.instance.scheduleTaskNotification(taskToSave);
+
     final key = _getDateKey(taskToSave.date);
 
     if (_tasksCache.containsKey(key)) {
@@ -70,6 +73,7 @@ class TaskProvider with ChangeNotifier {
     }
 
     await DatabaseHelper.instance.updateTask(taskToUpdate);
+    await NotificationService.instance.scheduleTaskNotification(taskToUpdate);
 
     _removeFromCache(taskToUpdate.id);
 
@@ -146,6 +150,7 @@ class TaskProvider with ChangeNotifier {
         subtasks: [],
         seriesId: seriesId,
         iconCodePoint: task.iconCodePoint,
+        reminderMinutes: task.reminderMinutes,
       );
 
       newTask.subtasks = task.subtasks
@@ -157,6 +162,7 @@ class TaskProvider with ChangeNotifier {
           .toList();
 
       await DatabaseHelper.instance.createTask(newTask);
+      await NotificationService.instance.scheduleTaskNotification(newTask);
 
       final newKey = _getDateKey(nextDate);
       if (_tasksCache.containsKey(newKey)) {
@@ -167,6 +173,14 @@ class TaskProvider with ChangeNotifier {
   }
 
   Future<void> deleteTask(String id) async {
+    // Attempt to cancel notification if task exists in cache or needs to be fetched
+    // For simplicity, we create a dummy task with the same ID for cancellation
+    await NotificationService.instance.cancelTaskNotification(Task(
+      id: id,
+      title: '',
+      date: DateTime.now(),
+    ));
+
     await DatabaseHelper.instance.deleteTask(id);
     _removeFromCache(id);
     notifyListeners();
@@ -236,6 +250,7 @@ class TaskProvider with ChangeNotifier {
             : RecurrenceType.none,
         startTime: newStartTime,
         endTime: newEndTime,
+        reminderMinutes: updatedTask.reminderMinutes,
         subtasks: updatedTask.subtasks
             .map((s) => Subtask(
                   title: s.title,
@@ -245,6 +260,7 @@ class TaskProvider with ChangeNotifier {
       );
 
       await DatabaseHelper.instance.updateTask(newTask);
+      await NotificationService.instance.scheduleTaskNotification(newTask);
 
       _removeFromCache(newTask.id);
 

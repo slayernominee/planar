@@ -252,11 +252,14 @@ class _DayViewState extends State<DayView> {
                   color: Colors.grey.withOpacity(0.2),
                 ),
                 Container(
-                  width: 16,
-                  height: 16,
+                  width: 10,
+                  height: 10,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.grey.withOpacity(0.5), width: 2),
+                    border: Border.all(
+                      color: Colors.grey.withOpacity(0.5),
+                      width: 1.5,
+                    ),
                   ),
                 ),
                 // Line
@@ -266,6 +269,24 @@ class _DayViewState extends State<DayView> {
                     color: Colors.grey.withOpacity(0.2),
                   ),
                 ),
+                if (duration >= 5 && task.endTime != null) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 2,
+                    height: 14,
+                    color: Colors.grey.withOpacity(0.2),
+                  ),
+                ],
               ],
             ),
           ),
@@ -415,7 +436,7 @@ class _DayViewState extends State<DayView> {
     if (isNowInTask) {
       final minutesFromStart = now.difference(task.startTime!).inMinutes;
       final topOffset =
-          (minutesFromStart * 1.5 + 14).clamp(0.0, durationHeight + 14);
+          (minutesFromStart * 1.5 + 15).clamp(0.0, durationHeight + 15);
       return Stack(
         clipBehavior: Clip.none,
         children: [

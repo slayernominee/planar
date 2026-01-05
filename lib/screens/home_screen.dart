@@ -113,83 +113,111 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white, // Light background
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            if (_currentTab == 0) _buildWeekHeader(context),
-            Expanded(
-              child: _currentTab == 0
-                  ? Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          topRight: Radius.circular(30),
-                        ),
+            Column(
+              children: [
+                if (_currentTab == 0) _buildWeekHeader(context),
+                Expanded(
+                  child: _currentTab == 0
+                      ? Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(30),
+                              topRight: Radius.circular(30),
+                            ),
+                            child: PageView.builder(
+                              controller: _pageController,
+                              onPageChanged: _onPageChanged,
+                              itemBuilder: (context, index) {
+                                final daysDifference = index - _initialPage;
+                                final date = _baseDate
+                                    .add(Duration(days: daysDifference));
+                                return DayView(date: date);
+                              },
+                            ),
+                          ),
+                        )
+                      : const SettingsScreen(),
+                ),
+              ],
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 24,
+              child: Center(
+                child: Container(
+                  height: 60,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(30),
-                          topRight: Radius.circular(30),
-                        ),
-                        child: PageView.builder(
-                          controller: _pageController,
-                          onPageChanged: _onPageChanged,
-                          itemBuilder: (context, index) {
-                            final daysDifference = index - _initialPage;
-                            final date =
-                                _baseDate.add(Duration(days: daysDifference));
-                            return DayView(date: date);
-                          },
-                        ),
+                    ],
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.calendar_today,
+                            color: _currentTab == 0
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey),
+                        onPressed: () {
+                          if (_currentTab == 0) {
+                            _jumpToToday();
+                          } else {
+                            setState(() => _currentTab = 0);
+                          }
+                        },
                       ),
-                    )
-                  : const SettingsScreen(),
+                      const VerticalDivider(
+                          width: 20, indent: 15, endIndent: 15),
+                      IconButton(
+                        icon: Icon(Icons.settings,
+                            color: _currentTab == 1
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.grey),
+                        onPressed: () => setState(() => _currentTab = 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       ),
       floatingActionButton: _currentTab == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AddTaskScreen(initialDate: _selectedDate),
-                  ),
-                );
-              },
-              child: const Icon(Icons.add),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: FloatingActionButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          AddTaskScreen(initialDate: _selectedDate),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.add),
+              ),
             )
           : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.calendar_today,
-                  color: _currentTab == 0
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey),
-              onPressed: () {
-                if (_currentTab == 0) {
-                  _jumpToToday();
-                } else {
-                  setState(() => _currentTab = 0);
-                }
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.settings,
-                  color: _currentTab == 1
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey),
-              onPressed: () => setState(() => _currentTab = 1),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

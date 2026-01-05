@@ -210,11 +210,14 @@ class _DayViewState extends State<DayView> {
           SizedBox(
             width: 45,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: (duration >= 5 && task.endTime != null)
+                  ? MainAxisAlignment.spaceBetween
+                  : MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 13.0),
+                  padding: EdgeInsets.only(
+                      top: (duration >= 5 && task.endTime != null) ? 13.0 : 0),
                   child: Text(
                     startTime,
                     style: const TextStyle(
@@ -245,12 +248,19 @@ class _DayViewState extends State<DayView> {
             width: 30,
             child: Column(
               children: [
-                // Top Line
-                Container(
-                  width: 2,
-                  height: 14,
-                  color: Colors.grey.withOpacity(0.2),
-                ),
+                if (duration >= 5 && task.endTime != null)
+                  Container(
+                    width: 2,
+                    height: 14,
+                    color: Colors.grey.withOpacity(0.2),
+                  )
+                else
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      color: Colors.grey.withOpacity(0.2),
+                    ),
+                  ),
                 Container(
                   width: 10,
                   height: 10,
@@ -262,7 +272,6 @@ class _DayViewState extends State<DayView> {
                     ),
                   ),
                 ),
-                // Line
                 Expanded(
                   child: Container(
                     width: 2,
@@ -435,8 +444,9 @@ class _DayViewState extends State<DayView> {
 
     if (isNowInTask) {
       final minutesFromStart = now.difference(task.startTime!).inMinutes;
-      final topOffset =
-          (minutesFromStart * 1.5 + 19).clamp(19.0, durationHeight + 19);
+      final topOffset = (duration >= 5 && task.endTime != null)
+          ? (minutesFromStart * 1.5 + 19).clamp(19.0, durationHeight + 19)
+          : (durationHeight / 2 + 19);
       return Stack(
         clipBehavior: Clip.none,
         children: [

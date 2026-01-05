@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 import '../db/database_helper.dart';
 import '../providers/task_provider.dart';
@@ -93,12 +94,18 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _clearDatabase(context),
           ),
           const Divider(),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('About'),
-            subtitle: Text(
-                'Version 1.0.0\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About'),
+            subtitle: const Text(
+                'Version 1.1.0\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar'),
             isThreeLine: true,
+            onTap: () async {
+              final url = Uri.parse('https://github.com/slayernominee/planar');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
           ),
         ],
       ),

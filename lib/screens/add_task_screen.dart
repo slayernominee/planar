@@ -31,7 +31,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   late int _selectedColor;
   int? _selectedIconCodePoint;
   late RecurrenceType _recurrence;
-  int? _reminderMinutes;
+  List<int> _reminders = [];
   List<Subtask> _subtasks = [];
 
   final List<IconData> _icons = [
@@ -102,7 +102,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     if (_endTime == null && _startTime != null) {
       _endTime = _startTime!.add(const Duration(minutes: 15));
     }
-    _reminderMinutes = widget.taskToEdit?.reminderMinutes;
+    _reminders = widget.taskToEdit != null ? List.from(widget.taskToEdit!.reminders) : [];
   }
 
   @override
@@ -186,7 +186,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       isDone: widget.taskToEdit?.isDone ?? false,
       iconCodePoint: _selectedIconCodePoint,
       seriesId: widget.taskToEdit?.seriesId,
-      reminderMinutes: _reminderMinutes,
+      reminders: _reminders,
     );
 
     final provider = context.read<TaskProvider>();
@@ -354,34 +354,137 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   }
 
   void _showReminderPicker() {
+    int h = 0;
+    int m = 0;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("Reminder",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            ...[null, 5, 10, 15, 30, 60].map((mins) {
-              String label = mins == null ? 'None' : '$mins minutes before';
-              return ListTile(
-                title: Text(label, style: const TextStyle(color: Colors.black)),
-                trailing: _reminderMinutes == mins
-                    ? const Icon(Icons.check, color: Colors.teal)
-                    : null,
-                onTap: () {
-                  setState(() => _reminderMinutes = mins);
-                  Navigator.pop(context);
-                },
-              );
-            }).toList()
-          ],
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Reminders",
+                      style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Done",
+                        style: TextStyle(
+                            color: Colors.teal, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (({0, 5, 10, 15, 30, 60}..addAll(_reminders))
+                        .toList()
+                      ..sort())
+                    .map((mins) {
+                  final isSelected = _reminders.contains(mins);
+                  String label;
+                  if (mins == 0) {
+                    label = "At task";
+                  } else if (mins < 60) {
+                    label = "$mins min before";
+                  } else {
+                    final hours = mins ~/ 60;
+                    final minutes = mins % 60;
+                    label = minutes == 0
+                        ? "$hours h before"
+                        : "$hours h $minutes m before";
+                  }
+                  return FilterChip(
+                    label: Text(label),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          if (!_reminders.contains(mins)) _reminders.add(mins);
+                        } else {
+                          _reminders.remove(mins);
+                        }
+                        _reminders.sort();
+                      });
+                      setModalState(() {});
+                    },
+                    selectedColor: Colors.teal.withOpacity(0.2),
+                    checkmarkColor: Colors.teal,
+                  );
+                }).toList(),
+              ),
+              const Divider(height: 32),
+              const Text("Custom Reminder",
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 120,
+                      child: CupertinoPicker(
+                        itemExtent: 32,
+                        onSelectedItemChanged: (val) => h = val,
+                        children:
+                            List.generate(24, (i) => Center(child: Text("$i h"))),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SizedBox(
+                      height: 120,
+                      child: CupertinoPicker(
+                        itemExtent: 32,
+                        onSelectedItemChanged: (val) => m = val,
+                        children:
+                            List.generate(60, (i) => Center(child: Text("$i m"))),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    final totalMins = h * 60 + m;
+                    setState(() {
+                      if (!_reminders.contains(totalMins)) {
+                        _reminders.add(totalMins);
+                        _reminders.sort();
+                      }
+                    });
+                    setModalState(() {});
+                  },
+                  child: const Text("Add Custom Reminder"),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -683,9 +786,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             color: Colors.black54),
                         const SizedBox(width: 12),
                         Text(
-                          _reminderMinutes == null
-                              ? 'No reminder'
-                              : '$_reminderMinutes minutes before',
+                          _reminders.isEmpty
+                              ? 'No reminders'
+                              : _reminders.map((m) => m == 0 ? "At task" : "${m}m").join(", "),
                           style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,

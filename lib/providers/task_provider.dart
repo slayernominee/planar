@@ -150,7 +150,7 @@ class TaskProvider with ChangeNotifier {
         subtasks: [],
         seriesId: seriesId,
         iconCodePoint: task.iconCodePoint,
-        reminderMinutes: task.reminderMinutes,
+        reminders: task.reminders,
       );
 
       newTask.subtasks = task.subtasks
@@ -250,7 +250,7 @@ class TaskProvider with ChangeNotifier {
             : RecurrenceType.none,
         startTime: newStartTime,
         endTime: newEndTime,
-        reminderMinutes: updatedTask.reminderMinutes,
+        reminders: updatedTask.reminders,
         subtasks: updatedTask.subtasks
             .map((s) => Subtask(
                   title: s.title,

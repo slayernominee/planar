@@ -92,63 +92,83 @@ class NotificationService {
     // Cancel existing notifications for this task
     await cancelTaskNotification(task);
 
-    if (task.reminderMinutes == null || task.startTime == null || task.isDone) {
+    if (task.startTime == null || task.isDone || task.reminders.isEmpty) {
       if (kDebugMode) {
-        print('Notification skipped for task "${task.title}": reminderMinutes=${task.reminderMinutes}, startTime=${task.startTime}, isDone=${task.isDone}');
+        print(
+            'Notification skipped for task "${task.title}": reminders=${task.reminders}, startTime=${task.startTime}, isDone=${task.isDone}');
       }
       return;
     }
 
-    final scheduledTime = task.startTime!.subtract(Duration(minutes: task.reminderMinutes!));
-    if (scheduledTime.isBefore(DateTime.now())) {
-      if (kDebugMode) {
-        print('Notification skipped for task "${task.title}": scheduledTime ($scheduledTime) is in the past');
+    for (int reminderMinutes in task.reminders) {
+      final scheduledTime =
+          task.startTime!.subtract(Duration(minutes: reminderMinutes));
+      if (scheduledTime.isBefore(DateTime.now())) {
+        if (kDebugMode) {
+          print(
+              'Notification skipped for task "${task.title}" at $reminderMinutes: scheduledTime ($scheduledTime) is in the past');
+        }
+        continue;
       }
-      return;
-    }
 
-    // Use a fixed ID for testing to avoid collision issues
-    final int notificationId = task.title.contains('Test') ? 12345 : task.id.hashCode;
+      // Create a unique ID for each reminder of the task
+      final int notificationId = task.title.contains('Test')
+          ? 12345
+          : (task.id + reminderMinutes.toString()).hashCode;
 
-    if (kDebugMode) {
-      print('DEBUG NOTIFICATIONS: Task=${task.title}, ID=$notificationId, Time=$scheduledTime');
-    }
+      if (kDebugMode) {
+        print(
+            'DEBUG NOTIFICATIONS: Task=${task.title}, ID=$notificationId, Time=$scheduledTime, Reminder=$reminderMinutes');
+      }
 
-    final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+      final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+      final body = reminderMinutes == 0
+          ? '${task.title} starts now!'
+          : '${task.title} starts in $reminderMinutes minutes';
 
-    try {
-      await _notificationsPlugin.zonedSchedule(
-        notificationId,
-        'Task Reminder',
-        '${task.title} starts in ${task.reminderMinutes} minutes',
-        tzTime,
-        _getNotificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: task.id,
-        matchDateTimeComponents: _getMatchComponents(task.recurrence),
-      );
-      if (kDebugMode) print('Notification scheduled successfully (Exact)');
-    } catch (e) {
-      await _notificationsPlugin.zonedSchedule(
-        notificationId,
-        'Task Reminder',
-        '${task.title} starts in ${task.reminderMinutes} minutes',
-        tzTime,
-        _getNotificationDetails(),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: task.id,
-        matchDateTimeComponents: _getMatchComponents(task.recurrence),
-      );
-      if (kDebugMode) print('Notification scheduled successfully (Inexact)');
+      try {
+        await _notificationsPlugin.zonedSchedule(
+          notificationId,
+          'Task Reminder',
+          body,
+          tzTime,
+          _getNotificationDetails(),
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: task.id,
+          matchDateTimeComponents: _getMatchComponents(task.recurrence),
+        );
+        if (kDebugMode) print('Notification scheduled successfully (Exact)');
+      } catch (e) {
+        await _notificationsPlugin.zonedSchedule(
+          notificationId,
+          'Task Reminder',
+          body,
+          tzTime,
+          _getNotificationDetails(),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: task.id,
+          matchDateTimeComponents: _getMatchComponents(task.recurrence),
+        );
+        if (kDebugMode) print('Notification scheduled successfully (Inexact)');
+      }
     }
 
     if (kDebugMode) {
       final pending = await _notificationsPlugin.pendingNotificationRequests();
-      print('NotificationService: Total pending requests after scheduling: ${pending.length}');
+      print(
+          'NotificationService: Total pending requests after scheduling: ${pending.length}');
     }
   }
 
   Future<void> cancelTaskNotification(Task task) async {
+    final List<PendingNotificationRequest> pending =
+        await _notificationsPlugin.pendingNotificationRequests();
+    for (var p in pending) {
+      if (p.payload == task.id) {
+        await _notificationsPlugin.cancel(p.id);
+      }
+    }
+    // Also cancel the single hashCode ID used in previous version
     await _notificationsPlugin.cancel(task.id.hashCode);
   }
 
@@ -167,7 +187,7 @@ class NotificationService {
       title: 'Test Task (20s)',
       date: now,
       startTime: now.add(const Duration(seconds: 20)),
-      reminderMinutes: 0,
+      reminders: [0],
     );
     await scheduleTaskNotification(testTask);
 

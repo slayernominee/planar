@@ -20,6 +20,7 @@ Planar is a sleek, high-performance open-source day planning application built w
 - **Dynamic Scheduling**: Tasks scale visually based on their duration, providing an immediate sense of your day's structure.
 - **Recurring Tasks**: Sophisticated support for Daily, Weekly, and Monthly recurrences with smart series management (update "Only This", "This & Future", or "All").
 - **Subtask Management**: Break down complex activities into actionable checklists within each task.
+- **Multi-Reminder Notifications**: Schedule multiple alerts for any task (e.g., 30m before, 5m before, and at start) with a custom dual-wheel time picker.
 - **Data Portability**: Full support for local JSON database export and import, allowing you to back up your schedule safely.
 - **Gap Analysis**: Automatically calculates and displays "Free Time" windows between scheduled tasks.
 - **Modern UI/UX**: A clean, Material 3 inspired interface with a focused light theme and smooth animations.

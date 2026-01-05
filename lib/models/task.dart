@@ -66,7 +66,7 @@ class Task {
   int colorValue;
   String? seriesId;
   int? iconCodePoint;
-  int? reminderMinutes;
+  List<int> reminders;
 
   Task({
     String? id,
@@ -81,7 +81,7 @@ class Task {
     this.colorValue = 0xFF2196F3,
     this.seriesId,
     this.iconCodePoint,
-    this.reminderMinutes,
+    this.reminders = const [],
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
@@ -97,11 +97,20 @@ class Task {
       'colorValue': colorValue,
       'seriesId': seriesId,
       'iconCodePoint': iconCodePoint,
-      'reminderMinutes': reminderMinutes,
+      'reminders': reminders.join(','),
     };
   }
 
   factory Task.fromMap(Map<String, dynamic> map) {
+    List<int> remindersList = [];
+    final remindersStr = map['reminders'] as String?;
+    if (remindersStr != null && remindersStr.isNotEmpty) {
+      remindersList = remindersStr.split(',').map((e) => int.parse(e)).toList();
+    } else if (map['reminderMinutes'] != null) {
+      // Migration from single reminderMinutes field
+      remindersList = [map['reminderMinutes'] as int];
+    }
+
     return Task(
       id: map['id'],
       title: map['title'],
@@ -114,7 +123,7 @@ class Task {
       colorValue: map['colorValue'],
       seriesId: map['seriesId'],
       iconCodePoint: map['iconCodePoint'],
-      reminderMinutes: map['reminderMinutes'],
+      reminders: remindersList,
     );
   }
 
@@ -131,7 +140,7 @@ class Task {
     int? colorValue,
     String? seriesId,
     int? iconCodePoint,
-    int? reminderMinutes,
+    List<int>? reminders,
   }) {
     return Task(
       id: id ?? this.id,
@@ -146,7 +155,7 @@ class Task {
       colorValue: colorValue ?? this.colorValue,
       seriesId: seriesId ?? this.seriesId,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
-      reminderMinutes: reminderMinutes ?? this.reminderMinutes,
+      reminders: reminders ?? this.reminders,
     );
   }
 }

@@ -25,7 +25,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -41,6 +41,11 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await db.execute('ALTER TABLE tasks ADD COLUMN reminderMinutes INTEGER');
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE tasks ADD COLUMN reminders TEXT');
+      // Migrate existing data from single reminderMinutes to reminders CSV
+      await db.execute('UPDATE tasks SET reminders = CAST(reminderMinutes AS TEXT) WHERE reminderMinutes IS NOT NULL');
     }
   }
 
@@ -69,7 +74,7 @@ CREATE TABLE tasks (
   colorValue $integerType,
   seriesId $textNullableType,
   iconCodePoint $integerNullableType,
-  reminderMinutes $integerNullableType
+  reminders $textNullableType
 )
 ''');
 

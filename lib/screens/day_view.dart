@@ -214,7 +214,7 @@ class _DayViewState extends State<DayView> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 12.0),
+                  padding: const EdgeInsets.only(top: 13.0),
                   child: Text(
                     startTime,
                     style: const TextStyle(
@@ -226,7 +226,7 @@ class _DayViewState extends State<DayView> {
                 ),
                 if (duration >= 5 && task.endTime != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
+                    padding: const EdgeInsets.only(bottom: 13.0),
                     child: Text(
                       endTime,
                       style: TextStyle(
@@ -308,7 +308,7 @@ class _DayViewState extends State<DayView> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: durationHeight),
                 child: Container(
-                  margin: const EdgeInsets.only(bottom: 4),
+                  margin: const EdgeInsets.only(top: 19, bottom: 19),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isDone ? Colors.grey[100] : color.withOpacity(0.15),
@@ -436,7 +436,7 @@ class _DayViewState extends State<DayView> {
     if (isNowInTask) {
       final minutesFromStart = now.difference(task.startTime!).inMinutes;
       final topOffset =
-          (minutesFromStart * 1.5 + 15).clamp(0.0, durationHeight + 15);
+          (minutesFromStart * 1.5 + 19).clamp(19.0, durationHeight + 19);
       return Stack(
         clipBehavior: Clip.none,
         children: [

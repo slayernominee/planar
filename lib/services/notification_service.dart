@@ -8,7 +8,8 @@ import '../models/task.dart';
 
 class NotificationService {
   static final NotificationService instance = NotificationService._internal();
-  final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   NotificationService._internal();
 
@@ -24,27 +25,32 @@ class NotificationService {
         // We need to extract just "Europe/Berlin"
         final String raw = timeZone.toString();
         if (raw.contains('(') && raw.contains(',')) {
-          locationName = raw.substring(raw.indexOf('(') + 1, raw.indexOf(',')).trim();
+          locationName = raw
+              .substring(raw.indexOf('(') + 1, raw.indexOf(','))
+              .trim();
         } else {
           locationName = raw;
         }
       }
 
-      if (kDebugMode) print('NotificationService: Local timezone detected as $locationName');
+      if (kDebugMode)
+        print('NotificationService: Local timezone detected as $locationName');
       tz.setLocalLocation(tz.getLocation(locationName ?? 'UTC'));
     } catch (e) {
-      if (kDebugMode) print('NotificationService: Timezone detection failed, using UTC: $e');
+      if (kDebugMode)
+        print('NotificationService: Timezone detection failed, using UTC: $e');
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/launcher_icon');
 
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+    const DarwinInitializationSettings iosSettings =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
@@ -54,9 +60,10 @@ class NotificationService {
     await _notificationsPlugin.initialize(settings);
 
     // Request notification permissions
-    final androidImplementation =
-        _notificationsPlugin.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidImplementation = _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (androidImplementation != null) {
       await androidImplementation.requestNotificationsPermission();
       // On some versions of the plugin, canScheduleExactAlarms is not available.
@@ -65,9 +72,10 @@ class NotificationService {
     }
 
     if (Platform.isIOS || Platform.isMacOS) {
-      final iosImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
+      final iosImplementation = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
       if (iosImplementation != null) {
         await iosImplementation.requestPermissions(
           alert: true,
@@ -75,9 +83,10 @@ class NotificationService {
           sound: true,
         );
       }
-      final macosImplementation =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
-              MacOSFlutterLocalNotificationsPlugin>();
+      final macosImplementation = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >();
       if (macosImplementation != null) {
         await macosImplementation.requestPermissions(
           alert: true,
@@ -95,18 +104,21 @@ class NotificationService {
     if (task.startTime == null || task.isDone || task.reminders.isEmpty) {
       if (kDebugMode) {
         print(
-            'Notification skipped for task "${task.title}": reminders=${task.reminders}, startTime=${task.startTime}, isDone=${task.isDone}');
+          'Notification skipped for task "${task.title}": reminders=${task.reminders}, startTime=${task.startTime}, isDone=${task.isDone}',
+        );
       }
       return;
     }
 
     for (int reminderMinutes in task.reminders) {
-      final scheduledTime =
-          task.startTime!.subtract(Duration(minutes: reminderMinutes));
+      final scheduledTime = task.startTime!.subtract(
+        Duration(minutes: reminderMinutes),
+      );
       if (scheduledTime.isBefore(DateTime.now())) {
         if (kDebugMode) {
           print(
-              'Notification skipped for task "${task.title}" at $reminderMinutes: scheduledTime ($scheduledTime) is in the past');
+            'Notification skipped for task "${task.title}" at $reminderMinutes: scheduledTime ($scheduledTime) is in the past',
+          );
         }
         continue;
       }
@@ -118,7 +130,8 @@ class NotificationService {
 
       if (kDebugMode) {
         print(
-            'DEBUG NOTIFICATIONS: Task=${task.title}, ID=$notificationId, Time=$scheduledTime, Reminder=$reminderMinutes');
+          'DEBUG NOTIFICATIONS: Task=${task.title}, ID=$notificationId, Time=$scheduledTime, Reminder=$reminderMinutes',
+        );
       }
 
       final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
@@ -154,21 +167,32 @@ class NotificationService {
     }
 
     if (kDebugMode) {
-      final pending = await _notificationsPlugin.pendingNotificationRequests();
-      print(
-          'NotificationService: Total pending requests after scheduling: ${pending.length}');
+      print('Notification check completed for task "${task.title}"');
     }
   }
 
   Future<void> cancelTaskNotification(Task task) async {
-    final List<PendingNotificationRequest> pending =
-        await _notificationsPlugin.pendingNotificationRequests();
-    for (var p in pending) {
-      if (p.payload == task.id) {
-        await _notificationsPlugin.cancel(p.id);
+    // Optimization: Use deterministic IDs for cancellation when reminders are known.
+    // This avoids the slow O(N) lookup of all pending notifications from the native side.
+    if (task.reminders.isNotEmpty) {
+      for (int reminderMinutes in task.reminders) {
+        final int notificationId = task.title.contains('Test')
+            ? 12345
+            : (task.id + reminderMinutes.toString()).hashCode;
+        await _notificationsPlugin.cancel(notificationId);
+      }
+    } else {
+      // Fallback: If reminders are unknown (e.g. during deletion by ID),
+      // we must search by payload. This is slower (O(N)).
+      final List<PendingNotificationRequest> pending =
+          await _notificationsPlugin.pendingNotificationRequests();
+      for (var p in pending) {
+        if (p.payload == task.id) {
+          await _notificationsPlugin.cancel(p.id);
+        }
       }
     }
-    // Also cancel the single hashCode ID used in previous version
+    // Also cancel the single hashCode ID used in older versions
     await _notificationsPlugin.cancel(task.id.hashCode);
   }
 

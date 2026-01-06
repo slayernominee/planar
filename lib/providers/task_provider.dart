@@ -83,7 +83,10 @@ class TaskProvider with ChangeNotifier {
       _sortTasks(newKey);
     }
 
-    if (taskToUpdate.recurrence != RecurrenceType.none) {
+    // Only regenerate the series if recurrence is newly enabled on this task (seriesId was null).
+    // Updating a single instance or toggling isDone should not trigger series regeneration.
+    if (taskToUpdate.recurrence != RecurrenceType.none &&
+        task.seriesId == null) {
       await _generateRecurringTasks(taskToUpdate);
     }
 
@@ -93,13 +96,15 @@ class TaskProvider with ChangeNotifier {
   Future<void> _generateRecurringTasks(Task task) async {
     final seriesId = task.seriesId ?? task.id;
 
-    // Remove existing future tasks in this series to avoid duplication
+    // Optimization: filter tasks first to avoid unnecessary work in the loop.
     final allTasks = await DatabaseHelper.instance.readAllTasks();
-    for (final t in allTasks) {
-      if (t.seriesId == seriesId && t.date.isAfter(task.date)) {
-        await DatabaseHelper.instance.deleteTask(t.id);
-        _removeFromCache(t.id);
-      }
+    final tasksToDelete = allTasks
+        .where((t) => t.seriesId == seriesId && t.date.isAfter(task.date))
+        .toList();
+
+    for (final t in tasksToDelete) {
+      await DatabaseHelper.instance.deleteTask(t.id);
+      _removeFromCache(t.id);
     }
 
     DateTime nextDate = task.date;
@@ -130,12 +135,22 @@ class TaskProvider with ChangeNotifier {
       }
 
       final newStartTime = task.startTime != null
-          ? DateTime(nextDate.year, nextDate.month, nextDate.day,
-              task.startTime!.hour, task.startTime!.minute)
+          ? DateTime(
+              nextDate.year,
+              nextDate.month,
+              nextDate.day,
+              task.startTime!.hour,
+              task.startTime!.minute,
+            )
           : null;
       final newEndTime = task.endTime != null
-          ? DateTime(nextDate.year, nextDate.month, nextDate.day,
-              task.endTime!.hour, task.endTime!.minute)
+          ? DateTime(
+              nextDate.year,
+              nextDate.month,
+              nextDate.day,
+              task.endTime!.hour,
+              task.endTime!.minute,
+            )
           : null;
 
       final newTask = Task(
@@ -154,11 +169,9 @@ class TaskProvider with ChangeNotifier {
       );
 
       newTask.subtasks = task.subtasks
-          .map((s) => Subtask(
-                title: s.title,
-                isDone: false,
-                taskId: newTask.id,
-              ))
+          .map(
+            (s) => Subtask(title: s.title, isDone: false, taskId: newTask.id),
+          )
           .toList();
 
       await DatabaseHelper.instance.createTask(newTask);
@@ -175,24 +188,27 @@ class TaskProvider with ChangeNotifier {
   Future<void> deleteTask(String id) async {
     // Attempt to cancel notification if task exists in cache or needs to be fetched
     // For simplicity, we create a dummy task with the same ID for cancellation
-    await NotificationService.instance.cancelTaskNotification(Task(
-      id: id,
-      title: '',
-      date: DateTime.now(),
-    ));
+    await NotificationService.instance.cancelTaskNotification(
+      Task(id: id, title: '', date: DateTime.now()),
+    );
 
     await DatabaseHelper.instance.deleteTask(id);
     _removeFromCache(id);
     notifyListeners();
   }
 
-  Future<void> deleteSeries(String seriesId, {bool all = true, DateTime? futureFrom}) async {
+  Future<void> deleteSeries(
+    String seriesId, {
+    bool all = true,
+    DateTime? futureFrom,
+  }) async {
     final allTasks = await DatabaseHelper.instance.readAllTasks();
     final tasksToDelete = allTasks.where((t) {
       if (t.seriesId != seriesId) return false;
       if (all) return true;
       if (futureFrom != null) {
-        return t.date.isAtSameMomentAs(futureFrom) || t.date.isAfter(futureFrom);
+        return t.date.isAtSameMomentAs(futureFrom) ||
+            t.date.isAfter(futureFrom);
       }
       return false;
     });
@@ -202,15 +218,19 @@ class TaskProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateSeries(Task updatedTask,
-      {bool all = true, DateTime? futureFrom}) async {
+  Future<void> updateSeries(
+    Task updatedTask, {
+    bool all = true,
+    DateTime? futureFrom,
+  }) async {
     final seriesId = updatedTask.seriesId!;
     final allTasks = await DatabaseHelper.instance.readAllTasks();
     final tasksToUpdate = allTasks.where((t) {
       if (t.seriesId != seriesId) return false;
       if (all) return true;
       if (futureFrom != null) {
-        return t.date.isAtSameMomentAs(futureFrom) || t.date.isAfter(futureFrom);
+        return t.date.isAtSameMomentAs(futureFrom) ||
+            t.date.isAfter(futureFrom);
       }
       return false;
     }).toList();
@@ -252,10 +272,7 @@ class TaskProvider with ChangeNotifier {
         endTime: newEndTime,
         reminders: updatedTask.reminders,
         subtasks: updatedTask.subtasks
-            .map((s) => Subtask(
-                  title: s.title,
-                  taskId: task.id,
-                ))
+            .map((s) => Subtask(title: s.title, taskId: task.id))
             .toList(),
       );
 
@@ -293,7 +310,9 @@ class TaskProvider with ChangeNotifier {
       final taskList = _tasksCache[key]!;
       final taskIndex = taskList.indexWhere((t) => t.id == task.id);
       if (taskIndex != -1) {
-        final subtaskIndex = taskList[taskIndex].subtasks.indexWhere((s) => s.id == subtask.id);
+        final subtaskIndex = taskList[taskIndex].subtasks.indexWhere(
+          (s) => s.id == subtask.id,
+        );
         if (subtaskIndex != -1) {
           taskList[taskIndex].subtasks[subtaskIndex] = updatedSubtask;
           notifyListeners();
@@ -304,8 +323,8 @@ class TaskProvider with ChangeNotifier {
 
   bool isSameDay(DateTime date1, DateTime date2) {
     return date1.year == date2.year &&
-           date1.month == date2.month &&
-           date1.day == date2.day;
+        date1.month == date2.month &&
+        date1.day == date2.day;
   }
 
   String _getDateKey(DateTime date) {

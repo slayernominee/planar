@@ -59,6 +59,12 @@ Planar is a sleek, high-performance open-source day planning application built w
    flutter run
    ```
 
+### Testing
+
+```bash
+flutter test
+```
+
 ## 🔒 Signing
 
 ---

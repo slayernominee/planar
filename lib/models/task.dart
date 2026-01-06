@@ -1,11 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-enum RecurrenceType {
-  none,
-  daily,
-  weekly,
-  monthly,
-}
+enum RecurrenceType { none, daily, weekly, monthly }
 
 class Subtask {
   String id;
@@ -38,12 +33,7 @@ class Subtask {
     );
   }
 
-  Subtask copyWith({
-    String? id,
-    String? title,
-    bool? isDone,
-    String? taskId,
-  }) {
+  Subtask copyWith({String? id, String? title, bool? isDone, String? taskId}) {
     return Subtask(
       id: id ?? this.id,
       title: title ?? this.title,
@@ -114,9 +104,11 @@ class Task {
     return Task(
       id: map['id'],
       title: map['title'],
-      description: map['description'],
+      description: map['description'] ?? '',
       date: DateTime.parse(map['date']),
-      startTime: map['startTime'] != null ? DateTime.parse(map['startTime']) : null,
+      startTime: map['startTime'] != null
+          ? DateTime.parse(map['startTime'])
+          : null,
       endTime: map['endTime'] != null ? DateTime.parse(map['endTime']) : null,
       isDone: map['isDone'] == 1,
       recurrence: RecurrenceType.values[map['recurrence']],

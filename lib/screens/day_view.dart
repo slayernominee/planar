@@ -86,83 +86,86 @@ class _DayViewState extends State<DayView> {
   }
 
   Widget _build24hTimeline(List<Task> tasks) {
-    const double hourHeight = 80.0;
     const double timeLineWidth = 60.0;
     final availableWidth =
         MediaQuery.of(context).size.width - timeLineWidth - 32;
-
     tasks.sort((a, b) => a.startTime!.compareTo(b.startTime!));
     final layouts = _calculateTaskLayouts(tasks);
+    final dayStart = DateTime(
+      widget.date.year,
+      widget.date.month,
+      widget.date.day,
+    );
+
+    // 1. Create Timeline Segments
+    final segments = _createTimelineSegments(tasks, dayStart);
+
+    // 2. Calculate offsets and build widgets
+    final backgroundWidgets = <Widget>[];
+    final segmentOffsets = <_TimelineSegment, double>{};
+    double currentY = 0;
+
+    for (final segment in segments) {
+      segmentOffsets[segment] = currentY;
+      backgroundWidgets.add(segment.buildWidget(context, timeLineWidth));
+      currentY += segment.height;
+    }
+    final totalTimelineHeight = currentY > 0 ? currentY : 400.0;
 
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Stack(
-          children: [
-            Column(
-              children: List.generate(24, (hour) {
-                return SizedBox(
-                  height: hourHeight,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: timeLineWidth,
-                        child: Text(
-                          '${hour.toString().padLeft(2, '0')}:00',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: Colors.grey[100]!),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+        child: SizedBox(
+          height: totalTimelineHeight,
+          child: Stack(
+            children: [
+              Column(children: backgroundWidgets),
+              ...layouts.map((layout) {
+                final task = layout.task;
+                _TaskBlockSegment? taskSegment;
+                for (var s in segments) {
+                  if (s is _TaskBlockSegment && s.tasks.contains(task)) {
+                    taskSegment = s;
+                    break;
+                  }
+                }
+
+                if (taskSegment == null) return const SizedBox.shrink();
+
+                final segmentTop = segmentOffsets[taskSegment]!;
+                final topInSegment =
+                    (task.startTime!
+                        .difference(taskSegment.startTime)
+                        .inMinutes) *
+                    taskSegment.pixelsPerMinute;
+                final top = segmentTop + topInSegment;
+
+                final duration =
+                    (task.endTime ??
+                            task.startTime!.add(const Duration(minutes: 30)))
+                        .difference(task.startTime!)
+                        .inMinutes;
+                final height = duration * taskSegment.pixelsPerMinute;
+
+                return Positioned(
+                  top: top,
+                  left:
+                      timeLineWidth +
+                      (layout.column *
+                          (1.0 / layout.totalColumns) *
+                          availableWidth),
+                  width: (1.0 / layout.totalColumns) * availableWidth,
+                  height: height.clamp(
+                    _TimelineSegment.minTaskHeight,
+                    totalTimelineHeight,
                   ),
+                  child: _buildTaskCard(task),
                 );
-              }),
-            ),
-            ...layouts.map((layout) {
-              final task = layout.task;
-              final start = task.startTime!;
-              DateTime end =
-                  task.endTime ?? start.add(const Duration(minutes: 30));
-
-              // Handle tasks ending on a different day for visualization
-              if (end.year != start.year ||
-                  end.month != start.month ||
-                  end.day != start.day) {
-                end = DateTime(start.year, start.month, start.day, 23, 59, 59);
-              }
-
-              final top = (start.hour + start.minute / 60.0) * hourHeight;
-              final height =
-                  (end.difference(start).inMinutes / 60.0) * hourHeight;
-
-              return Positioned(
-                top: top,
-                left:
-                    timeLineWidth +
-                    (layout.column *
-                        (1.0 / layout.totalColumns) *
-                        availableWidth),
-                width: (1.0 / layout.totalColumns) * availableWidth,
-                height: height.clamp(30.0, 24 * hourHeight),
-                child: _buildTaskCard(task),
-              );
-            }).toList(),
-            if (_isToday()) _buildNowLine(hourHeight, timeLineWidth),
-          ],
+              }).toList(),
+              if (_isToday())
+                _buildNowLine(timeLineWidth, segments, segmentOffsets),
+            ],
+          ),
         ),
       ),
     );
@@ -175,9 +178,81 @@ class _DayViewState extends State<DayView> {
         widget.date.day == now.day;
   }
 
-  Widget _buildNowLine(double hourHeight, double timeLineWidth) {
+  List<_TimelineSegment> _createTimelineSegments(
+    List<Task> tasks,
+    DateTime dayStart,
+  ) {
+    final segments = <_TimelineSegment>[];
+    if (tasks.isEmpty) {
+      segments.add(
+        _FreeTimeSegment(dayStart, dayStart.add(const Duration(days: 1))),
+      );
+      return segments;
+    }
+
+    // Start at the first task's start time to trim leading free time
+    DateTime cursor = tasks.first.startTime!;
+
+    int i = 0;
+    while (i < tasks.length) {
+      final firstTaskInBlock = tasks[i];
+
+      // Add free time before this block
+      if (firstTaskInBlock.startTime!.isAfter(cursor)) {
+        segments.add(_FreeTimeSegment(cursor, firstTaskInBlock.startTime!));
+      }
+
+      // Find all overlapping tasks for this block
+      final taskBlock = <Task>[firstTaskInBlock];
+      DateTime blockEnd =
+          firstTaskInBlock.endTime ??
+          firstTaskInBlock.startTime!.add(const Duration(minutes: 30));
+      int j = i + 1;
+      while (j < tasks.length) {
+        final nextTask = tasks[j];
+        if (nextTask.startTime!.isBefore(blockEnd)) {
+          taskBlock.add(nextTask);
+          final nextTaskEnd =
+              nextTask.endTime ??
+              nextTask.startTime!.add(const Duration(minutes: 30));
+          if (nextTaskEnd.isAfter(blockEnd)) {
+            blockEnd = nextTaskEnd;
+          }
+          j++;
+        } else {
+          break;
+        }
+      }
+
+      final blockStart = firstTaskInBlock.startTime!;
+      segments.add(_TaskBlockSegment(blockStart, blockEnd, taskBlock));
+
+      cursor = blockEnd;
+      i = j;
+    }
+
+    return segments;
+  }
+
+  Widget _buildNowLine(
+    double timeLineWidth,
+    List<_TimelineSegment> segments,
+    Map<_TimelineSegment, double> segmentOffsets,
+  ) {
     final now = DateTime.now();
-    final top = (now.hour + now.minute / 60.0) * hourHeight;
+    _TimelineSegment? segment;
+    for (var s in segments) {
+      if (now.isAtSameMomentAs(s.startTime) ||
+          (now.isAfter(s.startTime) && now.isBefore(s.endTime))) {
+        segment = s;
+        break;
+      }
+    }
+    if (segment == null) return const SizedBox.shrink();
+
+    final segmentTop = segmentOffsets[segment]!;
+    final minutesIntoSegment = now.difference(segment.startTime).inMinutes;
+    final top = segmentTop + (minutesIntoSegment * segment.pixelsPerMinute);
 
     return Positioned(
       top: top - 5,
@@ -347,4 +422,167 @@ class _TaskLayout {
   int column = 0;
   int totalColumns = 1;
   _TaskLayout(this.task);
+}
+
+// Helper classes for dynamic timeline layout
+abstract class _TimelineSegment {
+  final DateTime startTime;
+  final DateTime endTime;
+
+  static const double minTaskHeight = 40.0;
+  static const double basePixelsPerMinute = 80.0 / 60.0; // 80px per hour
+  static const double minFreeTimeHeight = 20.0;
+  static const double collapsedFreeTimeHeight = 50.0;
+  static const double freeTimeCollapseThresholdMinutes = 180; // 3 hours
+
+  _TimelineSegment(this.startTime, this.endTime);
+
+  int get durationInMinutes => endTime.difference(startTime).inMinutes;
+  double get height;
+  double get pixelsPerMinute;
+
+  Widget buildWidget(BuildContext context, double timeLineWidth);
+}
+
+class _TaskBlockSegment extends _TimelineSegment {
+  final List<Task> tasks;
+  late final double _pixelsPerMinute;
+  late final double _height;
+
+  _TaskBlockSegment(DateTime startTime, DateTime endTime, this.tasks)
+    : super(startTime, endTime) {
+    double minDuration = double.infinity;
+    for (var task in tasks) {
+      final duration =
+          (task.endTime ?? task.startTime!.add(const Duration(minutes: 30)))
+              .difference(task.startTime!)
+              .inMinutes;
+      if (duration > 0 && duration < minDuration) {
+        minDuration = duration.toDouble();
+      }
+    }
+
+    double ppm = _TimelineSegment.basePixelsPerMinute;
+    if (minDuration != double.infinity) {
+      final calculatedMinHeight = minDuration * ppm;
+      if (calculatedMinHeight < _TimelineSegment.minTaskHeight) {
+        ppm = _TimelineSegment.minTaskHeight / minDuration;
+      }
+    }
+    _pixelsPerMinute = ppm;
+    _height = (durationInMinutes * _pixelsPerMinute).clamp(
+      _TimelineSegment.minTaskHeight,
+      double.infinity,
+    );
+  }
+
+  @override
+  double get height => _height;
+  @override
+  double get pixelsPerMinute => _pixelsPerMinute;
+
+  @override
+  Widget buildWidget(BuildContext context, double timeLineWidth) {
+    return SizedBox(
+      height: height,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: timeLineWidth,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4.0),
+              child: Text(
+                DateFormat('HH:mm').format(startTime),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey[100]!)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FreeTimeSegment extends _TimelineSegment {
+  _FreeTimeSegment(DateTime startTime, DateTime endTime)
+    : super(startTime, endTime);
+
+  @override
+  double get pixelsPerMinute =>
+      durationInMinutes > 0 ? height / durationInMinutes : 0;
+
+  @override
+  double get height {
+    if (durationInMinutes > _TimelineSegment.freeTimeCollapseThresholdMinutes) {
+      return _TimelineSegment.collapsedFreeTimeHeight;
+    }
+    final calculatedHeight =
+        durationInMinutes * _TimelineSegment.basePixelsPerMinute;
+    return calculatedHeight.clamp(
+      _TimelineSegment.minFreeTimeHeight,
+      _TimelineSegment.collapsedFreeTimeHeight,
+    );
+  }
+
+  @override
+  Widget buildWidget(BuildContext context, double timeLineWidth) {
+    if (durationInMinutes <= 30) {
+      return SizedBox(
+        height: height,
+        child: Row(
+          children: [
+            SizedBox(width: timeLineWidth),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: Colors.grey[100]!)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: height,
+      child: Row(
+        children: [
+          SizedBox(width: timeLineWidth),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.grey[100]!)),
+              ),
+              child: Text(
+                durationInMinutes >= 60
+                    ? '${durationInMinutes ~/ 60}h ${durationInMinutes % 60}min free'
+                    : '$durationInMinutes min free',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

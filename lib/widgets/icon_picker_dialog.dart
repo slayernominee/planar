@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_icons.dart';
+import '../utils/search/icon_keywords.dart';
 
 class IconPickerDialog extends StatefulWidget {
   final IconData? selectedIcon;
@@ -24,10 +25,17 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
     setState(() {
       _isSearching = query.isNotEmpty;
       if (_isSearching) {
-        _searchResults = AppIcons.allIcons.entries
-            .where((entry) =>
-                entry.key.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+        final terms =
+            query.toLowerCase().trim().split(' ').where((s) => s.isNotEmpty);
+
+        _searchResults = AppIcons.allIcons.entries.where((entry) {
+          final name = entry.key.toLowerCase();
+          final keywords = IconKeywords.keywords[entry.key] ?? [];
+
+          return terms.every((term) {
+            return name.contains(term) || keywords.any((k) => k.contains(term));
+          });
+        }).toList();
       }
     });
   }

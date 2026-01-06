@@ -11,11 +11,7 @@ class AddTaskScreen extends StatefulWidget {
   final DateTime initialDate;
   final Task? taskToEdit;
 
-  const AddTaskScreen({
-    super.key,
-    required this.initialDate,
-    this.taskToEdit,
-  });
+  const AddTaskScreen({super.key, required this.initialDate, this.taskToEdit});
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -55,8 +51,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     final task = widget.taskToEdit;
     _taskId = task?.id ?? const Uuid().v4();
     _titleController = TextEditingController(text: task?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: task?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: task?.description ?? '',
+    );
     _selectedDate = task?.date ?? widget.initialDate;
     _startTime = task?.startTime;
     _endTime = task?.endTime;
@@ -71,14 +68,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     // Default times if new and not provided
     if (_startTime == null && widget.taskToEdit == null) {
       final now = DateTime.now();
-      _startTime = DateTime(
-          _selectedDate.year, _selectedDate.month, _selectedDate.day, now.hour + 1, 0);
+      final minutesToAdd = 5 - (now.minute % 5);
+      final baseTime = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        now.hour,
+        now.minute,
+      );
+      _startTime = baseTime.add(Duration(minutes: minutesToAdd));
       _endTime = _startTime!.add(const Duration(minutes: 15));
     }
     if (_endTime == null && _startTime != null) {
       _endTime = _startTime!.add(const Duration(minutes: 15));
     }
-    _reminders = widget.taskToEdit != null ? List.from(widget.taskToEdit!.reminders) : [];
+    _reminders = widget.taskToEdit != null
+        ? List.from(widget.taskToEdit!.reminders)
+        : [];
   }
 
   @override
@@ -128,12 +134,22 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       setState(() {
         final newDate = DateTime(picked.year, picked.month, picked.day);
         if (_startTime != null) {
-          _startTime = DateTime(newDate.year, newDate.month, newDate.day,
-              _startTime!.hour, _startTime!.minute);
+          _startTime = DateTime(
+            newDate.year,
+            newDate.month,
+            newDate.day,
+            _startTime!.hour,
+            _startTime!.minute,
+          );
         }
         if (_endTime != null) {
-          _endTime = DateTime(newDate.year, newDate.month, newDate.day,
-              _endTime!.hour, _endTime!.minute);
+          _endTime = DateTime(
+            newDate.year,
+            newDate.month,
+            newDate.day,
+            _endTime!.hour,
+            _endTime!.minute,
+          );
         }
         _selectedDate = newDate;
       });
@@ -164,10 +180,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   void _addSubtask() {
     setState(() {
-      _subtasks.add(Subtask(
-        title: '',
-        taskId: _taskId,
-      ));
+      _subtasks.add(Subtask(title: '', taskId: _taskId));
     });
   }
 
@@ -197,16 +210,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: Colors.white,
-            title: const Text('Update Recurring Task',
-                style: TextStyle(color: Colors.black)),
+            title: const Text(
+              'Update Recurring Task',
+              style: TextStyle(color: Colors.black),
+            ),
             content: const Text(
-                'This task is part of a series. How do you want to update it?',
-                style: TextStyle(color: Colors.black87)),
+              'This task is part of a series. How do you want to update it?',
+              style: TextStyle(color: Colors.black87),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child:
-                    const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               TextButton(
                 onPressed: () async {
@@ -222,14 +240,17 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
-                child: const Text('Only This',
-                    style: TextStyle(color: Colors.teal)),
+                child: const Text(
+                  'Only This',
+                  style: TextStyle(color: Colors.teal),
+                ),
               ),
               TextButton(
                 onPressed: () async {
                   // Only propagate recurrence change if it actually changed,
                   // otherwise keep child tasks as non-recurring.
-                  final taskToUpdate = (widget.taskToEdit?.recurrence == _recurrence)
+                  final taskToUpdate =
+                      (widget.taskToEdit?.recurrence == _recurrence)
                       ? newTask.copyWith(recurrence: RecurrenceType.none)
                       : newTask;
                   await provider.updateSeries(
@@ -240,13 +261,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
-                child: const Text('This & Future',
-                    style: TextStyle(color: Colors.teal)),
+                child: const Text(
+                  'This & Future',
+                  style: TextStyle(color: Colors.teal),
+                ),
               ),
               TextButton(
                 onPressed: () async {
                   // Only propagate recurrence change if it actually changed.
-                  final taskToUpdate = (widget.taskToEdit?.recurrence == _recurrence)
+                  final taskToUpdate =
+                      (widget.taskToEdit?.recurrence == _recurrence)
                       ? newTask.copyWith(recurrence: RecurrenceType.none)
                       : newTask;
                   await provider.updateSeries(taskToUpdate, all: true);
@@ -279,16 +303,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           context: context,
           builder: (ctx) => AlertDialog(
             backgroundColor: Colors.white,
-            title: const Text('Delete Recurring Task',
-                style: TextStyle(color: Colors.black)),
+            title: const Text(
+              'Delete Recurring Task',
+              style: TextStyle(color: Colors.black),
+            ),
             content: const Text(
-                'This task is part of a series. What would you like to delete?',
-                style: TextStyle(color: Colors.black87)),
+              'This task is part of a series. What would you like to delete?',
+              style: TextStyle(color: Colors.black87),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child:
-                    const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
               TextButton(
                 onPressed: () async {
@@ -296,27 +325,32 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
-                child: const Text('Only This',
-                    style: TextStyle(color: Colors.teal)),
+                child: const Text(
+                  'Only This',
+                  style: TextStyle(color: Colors.teal),
+                ),
               ),
               TextButton(
                 onPressed: () async {
                   await context.read<TaskProvider>().deleteSeries(
-                        task.seriesId!,
-                        all: false,
-                        futureFrom: task.date,
-                      );
+                    task.seriesId!,
+                    all: false,
+                    futureFrom: task.date,
+                  );
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
-                child: const Text('This & Future',
-                    style: TextStyle(color: Colors.teal)),
+                child: const Text(
+                  'This & Future',
+                  style: TextStyle(color: Colors.teal),
+                ),
               ),
               TextButton(
                 onPressed: () async {
-                  await context
-                      .read<TaskProvider>()
-                      .deleteSeries(task.seriesId!, all: true);
+                  await context.read<TaskProvider>().deleteSeries(
+                    task.seriesId!,
+                    all: true,
+                  );
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
@@ -374,16 +408,23 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Reminders",
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold)),
+                  const Text(
+                    "Reminders",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text("Done",
-                        style: TextStyle(
-                            color: Colors.teal, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Done",
+                      style: TextStyle(
+                        color: Colors.teal,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -391,48 +432,57 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (({0, 5, 10, 15, 30, 60}..addAll(_reminders))
-                        .toList()
-                      ..sort())
-                    .map((mins) {
-                  final isSelected = _reminders.contains(mins);
-                  String label;
-                  if (mins == 0) {
-                    label = "At task";
-                  } else if (mins < 60) {
-                    label = "$mins min before";
-                  } else {
-                    final hours = mins ~/ 60;
-                    final minutes = mins % 60;
-                    label = minutes == 0
-                        ? "$hours h before"
-                        : "$hours h $minutes m before";
-                  }
-                  return FilterChip(
-                    label: Text(label),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          if (!_reminders.contains(mins)) _reminders.add(mins);
-                        } else {
-                          _reminders.remove(mins);
-                        }
-                        _reminders.sort();
-                      });
-                      setModalState(() {});
-                    },
-                    selectedColor: Colors.teal.withOpacity(0.2),
-                    checkmarkColor: Colors.teal,
-                  );
-                }).toList(),
+                children:
+                    (({
+                      0,
+                      5,
+                      10,
+                      15,
+                      30,
+                      60,
+                    }..addAll(_reminders)).toList()..sort()).map((mins) {
+                      final isSelected = _reminders.contains(mins);
+                      String label;
+                      if (mins == 0) {
+                        label = "At task";
+                      } else if (mins < 60) {
+                        label = "$mins min before";
+                      } else {
+                        final hours = mins ~/ 60;
+                        final minutes = mins % 60;
+                        label = minutes == 0
+                            ? "$hours h before"
+                            : "$hours h $minutes m before";
+                      }
+                      return FilterChip(
+                        label: Text(label),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              if (!_reminders.contains(mins))
+                                _reminders.add(mins);
+                            } else {
+                              _reminders.remove(mins);
+                            }
+                            _reminders.sort();
+                          });
+                          setModalState(() {});
+                        },
+                        selectedColor: Colors.teal.withOpacity(0.2),
+                        checkmarkColor: Colors.teal,
+                      );
+                    }).toList(),
               ),
               const Divider(height: 32),
-              const Text("Custom Reminder",
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
+              const Text(
+                "Custom Reminder",
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -442,8 +492,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       child: CupertinoPicker(
                         itemExtent: 32,
                         onSelectedItemChanged: (val) => h = val,
-                        children:
-                            List.generate(24, (i) => Center(child: Text("$i h"))),
+                        children: List.generate(
+                          24,
+                          (i) => Center(child: Text("$i h")),
+                        ),
                       ),
                     ),
                   ),
@@ -453,8 +505,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       child: CupertinoPicker(
                         itemExtent: 32,
                         onSelectedItemChanged: (val) => m = val,
-                        children:
-                            List.generate(60, (i) => Center(child: Text("$i m"))),
+                        children: List.generate(
+                          60,
+                          (i) => Center(child: Text("$i m")),
+                        ),
                       ),
                     ),
                   ),
@@ -468,7 +522,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () {
                     final totalMins = h * 60 + m;
@@ -500,11 +555,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Repeat",
-                style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold)),
+            const Text(
+              "Repeat",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 10),
             ...RecurrenceType.values.map((type) {
               String label = 'Never';
@@ -532,7 +590,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   Navigator.pop(context);
                 },
               );
-            }).toList()
+            }).toList(),
           ],
         ),
       ),
@@ -554,7 +612,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         ),
         title: Text(
           isEditing ? 'Edit Task' : 'New Task',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -583,8 +644,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                     child: Icon(
                       _selectedIconCodePoint != null
-                          ? IconData(_selectedIconCodePoint!,
-                              fontFamily: 'MaterialIcons')
+                          ? IconData(
+                              _selectedIconCodePoint!,
+                              fontFamily: 'MaterialIcons',
+                            )
                           : Icons.sentiment_satisfied_alt,
                       color: Colors.black54,
                       size: 28,
@@ -596,9 +659,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   child: TextFormField(
                     controller: _titleController,
                     style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.black,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
                     decoration: const InputDecoration(
                       hintText: 'Title',
                       hintStyle: TextStyle(color: Colors.grey),
@@ -625,21 +689,27 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 12),
+                        vertical: 12,
+                        horizontal: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today,
-                              size: 18, color: Colors.black54),
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 18,
+                            color: Colors.black54,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             DateFormat('EEE, d MMM').format(_selectedDate),
                             style: const TextStyle(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.w600),
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -653,22 +723,28 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 12, horizontal: 12),
+                        vertical: 12,
+                        horizontal: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time,
-                              size: 18, color: Colors.black54),
+                          const Icon(
+                            Icons.access_time,
+                            size: 18,
+                            color: Colors.black54,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '${_startTime != null ? DateFormat('HH:mm').format(_startTime!) : '--:--'} - ${_endTime != null ? DateFormat('HH:mm').format(_endTime!) : '--:--'}',
                               style: const TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w600),
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -685,7 +761,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             const Text(
               'Color',
               style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -710,8 +789,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             : null,
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check,
-                              color: Colors.white, size: 20)
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 20,
+                            )
                           : null,
                     ),
                   );
@@ -725,8 +807,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               onTap: _showRecurrencePicker,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(12),
@@ -741,9 +825,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         Text(
                           _getRecurrenceLabel(),
                           style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
                         ),
                       ],
                     ),
@@ -759,8 +844,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               onTap: _showReminderPicker,
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(12),
@@ -770,17 +857,22 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.notifications_outlined,
-                            color: Colors.black54),
+                        const Icon(
+                          Icons.notifications_outlined,
+                          color: Colors.black54,
+                        ),
                         const SizedBox(width: 12),
                         Text(
                           _reminders.isEmpty
                               ? 'No reminders'
-                              : _reminders.map((m) => m == 0 ? "At task" : "${m}m").join(", "),
+                              : _reminders
+                                    .map((m) => m == 0 ? "At task" : "${m}m")
+                                    .join(", "),
                           style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
                         ),
                       ],
                     ),
@@ -795,7 +887,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             const Text(
               'Details',
               style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -812,18 +907,20 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     final subtask = entry.value;
                     return Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12.0, vertical: 4),
+                        horizontal: 12.0,
+                        vertical: 4,
+                      ),
                       child: Row(
                         children: [
                           GestureDetector(
                             onTap: () => setState(
-                                () => subtask.isDone = !subtask.isDone),
+                              () => subtask.isDone = !subtask.isDone,
+                            ),
                             child: Icon(
                               subtask.isDone
                                   ? Icons.check_box
                                   : Icons.check_box_outline_blank,
-                              color:
-                                  subtask.isDone ? Colors.teal : Colors.grey,
+                              color: subtask.isDone ? Colors.teal : Colors.grey,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -840,8 +937,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           GestureDetector(
                             onTap: () =>
                                 setState(() => _subtasks.removeAt(index)),
-                            child: const Icon(Icons.close,
-                                color: Colors.grey, size: 18),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.grey,
+                              size: 18,
+                            ),
                           ),
                         ],
                       ),
@@ -857,9 +957,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         children: const [
                           Icon(Icons.add, color: Colors.grey),
                           SizedBox(width: 12),
-                          Text("Add Subtask",
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 16)),
+                          Text(
+                            "Add Subtask",
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
                         ],
                       ),
                     ),
@@ -889,8 +990,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 child: TextButton.icon(
                   onPressed: _deleteTask,
                   icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  label: const Text('Delete Task',
-                      style: TextStyle(color: Colors.red, fontSize: 16)),
+                  label: const Text(
+                    'Delete Task',
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
                 ),
               ),
             const SizedBox(height: 20),
@@ -930,14 +1033,18 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
     _start = widget.initialStartTime;
     _end = widget.initialEndTime;
     // Infinite loop trick
-    _startHourCtrl =
-        FixedExtentScrollController(initialItem: 1000 * 24 + _start.hour);
-    _startMinCtrl =
-        FixedExtentScrollController(initialItem: 1000 * 60 + _start.minute);
-    _endHourCtrl =
-        FixedExtentScrollController(initialItem: 1000 * 24 + _end.hour);
-    _endMinCtrl =
-        FixedExtentScrollController(initialItem: 1000 * 60 + _end.minute);
+    _startHourCtrl = FixedExtentScrollController(
+      initialItem: 1000 * 24 + _start.hour,
+    );
+    _startMinCtrl = FixedExtentScrollController(
+      initialItem: 1000 * 60 + _start.minute,
+    );
+    _endHourCtrl = FixedExtentScrollController(
+      initialItem: 1000 * 24 + _end.hour,
+    );
+    _endMinCtrl = FixedExtentScrollController(
+      initialItem: 1000 * 60 + _end.minute,
+    );
   }
 
   @override
@@ -953,8 +1060,13 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
     final h = hour % 24;
     final m = minute % 60;
     final oldStart = _start;
-    final newStart =
-        DateTime(oldStart.year, oldStart.month, oldStart.day, h, m);
+    final newStart = DateTime(
+      oldStart.year,
+      oldStart.month,
+      oldStart.day,
+      h,
+      m,
+    );
     final duration = _end.difference(oldStart);
 
     setState(() {
@@ -991,8 +1103,11 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
     }
   }
 
-  Widget _buildPicker(FixedExtentScrollController ctrl, int count,
-      Function(int) onChanged) {
+  Widget _buildPicker(
+    FixedExtentScrollController ctrl,
+    int count,
+    Function(int) onChanged,
+  ) {
     return SizedBox(
       width: 40,
       child: ListWheelScrollView.useDelegate(
@@ -1027,11 +1142,14 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Time',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold)),
+              const Text(
+                'Time',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.grey),
                 onPressed: () {
@@ -1052,26 +1170,41 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildPicker(_startHourCtrl, 24,
-                    (val) => _updateStartTime(val, _start.minute)),
-                _buildPicker(_startMinCtrl, 60,
-                    (val) => _updateStartTime(_start.hour, val)),
+                _buildPicker(
+                  _startHourCtrl,
+                  24,
+                  (val) => _updateStartTime(val, _start.minute),
+                ),
+                _buildPicker(
+                  _startMinCtrl,
+                  60,
+                  (val) => _updateStartTime(_start.hour, val),
+                ),
                 const SizedBox(width: 10),
                 const Icon(Icons.arrow_forward, color: Colors.grey, size: 20),
                 const SizedBox(width: 10),
-                _buildPicker(_endHourCtrl, 24,
-                    (val) => _updateEndTime(val, _end.minute)),
-                _buildPicker(_endMinCtrl, 60,
-                    (val) => _updateEndTime(_end.hour, val)),
+                _buildPicker(
+                  _endHourCtrl,
+                  24,
+                  (val) => _updateEndTime(val, _end.minute),
+                ),
+                _buildPicker(
+                  _endMinCtrl,
+                  60,
+                  (val) => _updateEndTime(_end.hour, val),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Duration',
-              style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          const Text(
+            'Duration',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -1083,21 +1216,24 @@ class _TimePickerSheetState extends State<_TimePickerSheet> {
                     child: Container(
                       margin: const EdgeInsets.only(right: 10),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: _end.difference(_start).inMinutes == min
-                                ? Colors.teal
-                                : Colors.transparent),
+                          color: _end.difference(_start).inMinutes == min
+                              ? Colors.teal
+                              : Colors.transparent,
+                        ),
                       ),
                       child: Text(
                         min < 60
                             ? '${min}m'
                             : (min % 60 == 0
-                                ? '${min ~/ 60}h'
-                                : '${(min / 60).toStringAsFixed(1)}h'),
+                                  ? '${min ~/ 60}h'
+                                  : '${(min / 60).toStringAsFixed(1)}h'),
                         style: const TextStyle(color: Colors.black),
                       ),
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../db/database_helper.dart';
 import '../providers/task_provider.dart';
@@ -212,17 +213,25 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           const Divider(),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('About'),
-            subtitle: const Text(
-                'Version 1.1.0\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar'),
-            isThreeLine: true,
-            onTap: () async {
-              final url = Uri.parse('https://github.com/slayernominee/planar');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
+          FutureBuilder<PackageInfo>(
+            future: PackageInfo.fromPlatform(),
+            builder: (context, snapshot) {
+              final version = snapshot.hasData
+                  ? '${snapshot.data!.version}+${snapshot.data!.buildNumber}'
+                  : 'Loading...';
+              return ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('About'),
+                subtitle: Text(
+                    'Version $version\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar'),
+                isThreeLine: true,
+                onTap: () async {
+                  final url = Uri.parse('https://github.com/slayernominee/planar');
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  }
+                },
+              );
             },
           ),
         ],

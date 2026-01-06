@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../utils/app_icons.dart';
 
 class IconPickerDialog extends StatefulWidget {
-  const IconPickerDialog({super.key});
+  final IconData? selectedIcon;
+
+  const IconPickerDialog({super.key, this.selectedIcon});
 
   @override
   State<IconPickerDialog> createState() => _IconPickerDialogState();
@@ -10,20 +12,19 @@ class IconPickerDialog extends StatefulWidget {
 
 class _IconPickerDialogState extends State<IconPickerDialog> {
   final TextEditingController _searchController = TextEditingController();
-  List<MapEntry<String, IconData>> _filteredIcons = [];
+  List<MapEntry<String, IconData>> _searchResults = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _filteredIcons = AppIcons.allIcons.entries.toList();
   }
 
   void _filterIcons(String query) {
     setState(() {
-      if (query.isEmpty) {
-        _filteredIcons = AppIcons.allIcons.entries.toList();
-      } else {
-        _filteredIcons = AppIcons.allIcons.entries
+      _isSearching = query.isNotEmpty;
+      if (_isSearching) {
+        _searchResults = AppIcons.allIcons.entries
             .where((entry) =>
                 entry.key.toLowerCase().contains(query.toLowerCase()))
             .toList();
@@ -88,46 +89,100 @@ class _IconPickerDialogState extends State<IconPickerDialog> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _filteredIcons.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No icons found',
-                        style: TextStyle(color: Colors.grey[500]),
-                      ),
-                    )
-                  : GridView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 5,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                      itemCount: _filteredIcons.length,
-                      itemBuilder: (context, index) {
-                        final entry = _filteredIcons[index];
-                        return InkWell(
-                          onTap: () {
-                            Navigator.of(context).pop(entry.value);
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Icon(
-                              entry.value,
-                              color: Colors.black87,
-                              size: 28,
-                            ),
+              child: _isSearching
+                  ? _searchResults.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No icons found',
+                            style: TextStyle(color: Colors.grey[500]),
                           ),
+                        )
+                      : GridView.builder(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 5,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: _searchResults.length,
+                          itemBuilder: (context, index) =>
+                              _buildIconItem(_searchResults[index]),
+                        )
+                  : ListView.builder(
+                      itemCount: AppIcons.categories.length,
+                      itemBuilder: (context, index) {
+                        final categoryName =
+                            AppIcons.categories.keys.elementAt(index);
+                        final categoryIcons = AppIcons.categories.values
+                            .elementAt(index)
+                            .entries
+                            .toList();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                              child: Text(
+                                categoryName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
+                            GridView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 0),
+                              physics: const NeverScrollableScrollPhysics(),
+                              shrinkWrap: true,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 5,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                              itemCount: categoryIcons.length,
+                              itemBuilder: (context, idx) =>
+                                  _buildIconItem(categoryIcons[idx]),
+                            ),
+                          ],
                         );
                       },
                     ),
             ),
             const SizedBox(height: 16),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconItem(MapEntry<String, IconData> entry) {
+    final isSelected = widget.selectedIcon != null &&
+        entry.value.codePoint == widget.selectedIcon!.codePoint;
+
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).pop(entry.value);
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.teal.withOpacity(0.1) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Colors.teal : Colors.grey.shade200,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Icon(
+          entry.value,
+          color: isSelected ? Colors.teal : Colors.black87,
+          size: 28,
         ),
       ),
     );

@@ -91,7 +91,11 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _pickIcon() async {
     final IconData? picked = await showDialog(
       context: context,
-      builder: (context) => const IconPickerDialog(),
+      builder: (context) => IconPickerDialog(
+        selectedIcon: _selectedIconCodePoint != null
+            ? IconData(_selectedIconCodePoint!, fontFamily: 'MaterialIcons')
+            : null,
+      ),
     );
     if (picked != null) {
       setState(() {

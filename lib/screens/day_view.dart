@@ -42,32 +42,18 @@ class _DayViewState extends State<DayView> {
     super.dispose();
   }
 
-  void _openAddTask({DateTime? startTime}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AddTaskScreen(initialDate: widget.date),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<TaskProvider>(
       builder: (context, taskProvider, child) {
         final tasks = taskProvider.getTasksFor(widget.date);
         final timedTasks = tasks.where((t) => t.startTime != null).toList();
-        timedTasks.sort((a, b) => a.startTime!.compareTo(b.startTime!));
 
         return Container(
-          color: Colors.white, // Light background
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            children: [
-              if (tasks.isEmpty) _buildEmptyState(),
-              if (tasks.isNotEmpty) ..._buildTimeline(timedTasks),
-              const SizedBox(height: 80), // Padding for FAB
-            ],
-          ),
+          color: Colors.white,
+          child: timedTasks.isEmpty
+              ? _buildEmptyState()
+              : _build24hTimeline(timedTasks),
         );
       },
     );
@@ -99,526 +85,266 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  List<Widget> _buildTimeline(List<Task> tasks) {
-    List<Widget> widgets = [];
-    final now = DateTime.now();
-    final isToday =
-        widget.date.year == now.year &&
-        widget.date.month == now.month &&
-        widget.date.day == now.day;
+  Widget _build24hTimeline(List<Task> tasks) {
+    const double hourHeight = 80.0;
+    const double timeLineWidth = 60.0;
+    final availableWidth =
+        MediaQuery.of(context).size.width - timeLineWidth - 32;
 
-    if (isToday && tasks.isNotEmpty && now.isBefore(tasks.first.startTime!)) {
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _buildNowLineContent(),
-        ),
-      );
-    }
+    tasks.sort((a, b) => a.startTime!.compareTo(b.startTime!));
+    final layouts = _calculateTaskLayouts(tasks);
 
-    for (int i = 0; i < tasks.length; i++) {
-      final task = tasks[i];
-      final isLast = i == tasks.length - 1;
-      final nextTask = isLast ? null : tasks[i + 1];
-
-      // 1. The Task Row
-      widgets.add(_buildTaskRow(task));
-
-      // 2. The Gap (Connecting Line + Optional Content)
-      if (!isLast) {
-        widgets.add(_buildConnector(task, nextTask!));
-      }
-    }
-
-    if (isToday &&
-        tasks.isNotEmpty &&
-        now.isAfter(tasks.last.endTime ?? tasks.last.startTime!)) {
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(top: 16),
-          child: _buildNowLineContent(),
-        ),
-      );
-    }
-
-    return widgets;
-  }
-
-  Widget _buildNowLineContent() {
-    return Row(
-      children: [
-        SizedBox(
-          width: 45,
-          child: Text(
-            DateFormat('HH:mm').format(DateTime.now()),
-            style: const TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-            textAlign: TextAlign.right,
-          ),
-        ),
-        const SizedBox(width: 8),
-        const SizedBox(
-          width: 30,
-          child: Center(
-            child: CircleAvatar(radius: 4, backgroundColor: Colors.red),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(height: 2, color: Colors.red.withOpacity(0.5)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTaskRow(Task task) {
-    final startTime = DateFormat('HH:mm').format(task.startTime!);
-    final endTime = task.endTime != null
-        ? DateFormat('HH:mm').format(task.endTime!)
-        : '';
-    final duration = task.endTime?.difference(task.startTime!).inMinutes ?? 0;
-
-    final endsNextDay =
-        task.endTime != null &&
-        (task.endTime!.day != task.startTime!.day ||
-            task.endTime!.month != task.startTime!.month ||
-            task.endTime!.year != task.startTime!.year);
-
-    // Calculate height logic
-    // 1 minute = 1.5 logical pixels, but clamped between 50 and 400
-    double durationHeight = 50;
-    if (task.endTime != null) {
-      durationHeight = (duration * 1.5).clamp(50.0, 400.0);
-    }
-
-    // Icon Logic
-    final iconData = task.iconCodePoint != null
-        ? IconData(task.iconCodePoint!, fontFamily: 'MaterialIcons')
-        : Icons.event;
-
-    final color = Color(task.colorValue);
-    final isRecurring = task.seriesId != null;
-    final isDone = task.isDone;
-
-    final now = DateTime.now();
-    final isToday =
-        widget.date.year == now.year &&
-        widget.date.month == now.month &&
-        widget.date.day == now.day;
-    final isNowInTask =
-        isToday &&
-        now.isAfter(task.startTime!) &&
-        (task.endTime == null || now.isBefore(task.endTime!));
-
-    Widget rowContent = IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left: Time Label
-          SizedBox(
-            width: 45,
-            child: Column(
-              mainAxisAlignment: (duration >= 5 && task.endTime != null)
-                  ? MainAxisAlignment.spaceBetween
-                  : MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(
-                    top: (duration >= 5 && task.endTime != null) ? 13.0 : 0,
-                  ),
-                  child: Text(
-                    startTime,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-                if (duration >= 5 && task.endTime != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 13.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          endTime,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Stack(
+          children: [
+            Column(
+              children: List.generate(24, (hour) {
+                return SizedBox(
+                  height: hourHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: timeLineWidth,
+                        child: Text(
+                          '${hour.toString().padLeft(2, '0')}:00',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey[400],
                             fontSize: 12,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (endsNextDay)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 2),
-                            child: Text(
-                              '+1',
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Colors.grey[100]!),
                             ),
                           ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Center: Node
-          SizedBox(
-            width: 30,
-            child: Column(
-              children: [
-                if (duration >= 5 && task.endTime != null)
-                  Container(
-                    width: 2,
-                    height: 14,
-                    color: Colors.grey.withOpacity(0.2),
-                  )
-                else
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: Colors.grey.withOpacity(0.2),
-                    ),
-                  ),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey.withOpacity(0.5),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: Colors.grey.withOpacity(0.2),
-                  ),
-                ),
-                if (duration >= 5 && task.endTime != null) ...[
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.grey.withOpacity(0.5),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: 2,
-                    height: 14,
-                    color: Colors.grey.withOpacity(0.2),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Right: Task Details (Styled Card)
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => AddTaskScreen(
-                      initialDate: widget.date,
-                      taskToEdit: task,
-                    ),
-                  ),
-                );
-              },
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: durationHeight),
-                child: Container(
-                  margin: const EdgeInsets.only(top: 19, bottom: 19),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDone ? Colors.grey[100] : color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border(
-                      left: BorderSide(
-                        color: isDone ? Colors.grey : color,
-                        width: 4,
-                      ),
-                    ),
-                  ),
-                  child: Opacity(
-                    opacity: isDone ? 0.6 : 1.0,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Center(
-                            child: Icon(iconData, color: color, size: 24),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Time Range
-                              Row(
-                                children: [
-                                  Text(
-                                    duration >= 5 && task.endTime != null
-                                        ? '$startTime - $endTime${endsNextDay ? " (+1)" : ""}'
-                                        : startTime,
-                                    style: TextStyle(
-                                      color: Colors.black.withOpacity(0.6),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      decoration: isDone
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                    ),
-                                  ),
-                                  if (isRecurring) ...[
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.repeat,
-                                      size: 14,
-                                      color: Colors.black.withOpacity(0.5),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              // Title
-                              Text(
-                                task.title,
-                                style: TextStyle(
-                                  color: isDone
-                                      ? Colors.black54
-                                      : Colors.black87,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: task.isDone
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  decorationColor: Colors.black54,
-                                ),
-                              ),
-                              if (task.description.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  task.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                              if (task.subtasks.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.checklist,
-                                      size: 14,
-                                      color: Colors.black54,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${task.subtasks.where((s) => s.isDone).length}/${task.subtasks.length}',
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () {
-                            final updated = task.copyWith(isDone: !task.isDone);
-                            context.read<TaskProvider>().updateTask(updated);
-                          },
-                          child: Icon(
-                            task.isDone
-                                ? Icons.check_circle
-                                : Icons.circle_outlined,
-                            color: task.isDone ? Colors.grey : color,
-                            size: 24,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (isNowInTask) {
-      final minutesFromStart = now.difference(task.startTime!).inMinutes;
-      final topOffset = (duration >= 5 && task.endTime != null)
-          ? (minutesFromStart * 1.5 + 19).clamp(19.0, durationHeight + 19)
-          : (durationHeight / 2 + 19);
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          rowContent,
-          Positioned(
-            top: topOffset,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(child: _buildNowLineContent()),
-          ),
-        ],
-      );
-    }
-
-    return rowContent;
-  }
-
-  Widget _buildConnector(Task current, Task next) {
-    if (current.endTime == null || next.startTime == null) {
-      return const SizedBox.shrink();
-    }
-
-    final gap = next.startTime!.difference(current.endTime!);
-    if (gap.inMinutes <= 0) {
-      return const SizedBox.shrink();
-    }
-
-    // 1 minute = 1.5 logical pixels, but clamped to reasonable values (max 2h)
-    final gapHeight = (gap.inMinutes * 1.5).clamp(20.0, 180.0);
-
-    final now = DateTime.now();
-    final isToday =
-        widget.date.year == now.year &&
-        widget.date.month == now.month &&
-        widget.date.day == now.day;
-    final isNowInGap =
-        isToday &&
-        now.isAfter(current.endTime!) &&
-        now.isBefore(next.startTime!);
-
-    Widget connector = SizedBox(
-      height: gapHeight,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(width: 45 + 8), // Indent for Node column
-          // The Line Column
-          SizedBox(
-            width: 30,
-            child: Center(
-              child: CustomPaint(
-                size: const Size(2, double.infinity),
-                painter: DashedLinePainter(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // The Content in the Gap
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (gap.inMinutes >= 15) ...[
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 14,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${gap.inHours > 0 ? '${gap.inHours}h ' : ''}${gap.inMinutes % 60}m free',
-                        style: TextStyle(
-                          color: Colors.grey[500],
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
                   ),
+                );
+              }),
+            ),
+            ...layouts.map((layout) {
+              final task = layout.task;
+              final start = task.startTime!;
+              DateTime end =
+                  task.endTime ?? start.add(const Duration(minutes: 30));
+
+              // Handle tasks ending on a different day for visualization
+              if (end.year != start.year ||
+                  end.month != start.month ||
+                  end.day != start.day) {
+                end = DateTime(start.year, start.month, start.day, 23, 59, 59);
+              }
+
+              final top = (start.hour + start.minute / 60.0) * hourHeight;
+              final height =
+                  (end.difference(start).inMinutes / 60.0) * hourHeight;
+
+              return Positioned(
+                top: top,
+                left:
+                    timeLineWidth +
+                    (layout.column *
+                        (1.0 / layout.totalColumns) *
+                        availableWidth),
+                width: (1.0 / layout.totalColumns) * availableWidth,
+                height: height.clamp(30.0, 24 * hourHeight),
+                child: _buildTaskCard(task),
+              );
+            }).toList(),
+            if (_isToday()) _buildNowLine(hourHeight, timeLineWidth),
+          ],
+        ),
+      ),
+    );
+  }
+
+  bool _isToday() {
+    final now = DateTime.now();
+    return widget.date.year == now.year &&
+        widget.date.month == now.month &&
+        widget.date.day == now.day;
+  }
+
+  Widget _buildNowLine(double hourHeight, double timeLineWidth) {
+    final now = DateTime.now();
+    final top = (now.hour + now.minute / 60.0) * hourHeight;
+
+    return Positioned(
+      top: top - 5,
+      left: 0,
+      right: 0,
+      child: Row(
+        children: [
+          SizedBox(
+            width: timeLineWidth,
+            child: Text(
+              DateFormat('HH:mm').format(now),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Container(
+            width: 10,
+            height: 10,
+            decoration: const BoxDecoration(
+              color: Colors.red,
+              shape: BoxShape.circle,
+            ),
+          ),
+          Expanded(child: Container(height: 2, color: Colors.red)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(Task task) {
+    final color = Color(task.colorValue);
+    final isDone = task.isDone;
+    final iconData = task.iconCodePoint != null
+        ? IconData(task.iconCodePoint!, fontFamily: 'MaterialIcons')
+        : Icons.event;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) =>
+                AddTaskScreen(initialDate: widget.date, taskToEdit: task),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isDone ? Colors.grey[100] : color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+            left: BorderSide(color: isDone ? Colors.grey : color, width: 4),
+          ),
+        ),
+        child: Opacity(
+          opacity: isDone ? 0.6 : 1.0,
+          child: SingleChildScrollView(
+            physics: const NeverScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(iconData, color: color, size: 14),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        task.title,
+                        style: TextStyle(
+                          color: isDone ? Colors.black54 : Colors.black87,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          decoration: isDone
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                if (task.description.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    task.description,
+                    style: const TextStyle(color: Colors.black54, fontSize: 10),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
                 ],
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
+  }
 
-    if (isNowInGap) {
-      final minutesFromEnd = now.difference(current.endTime!).inMinutes;
-      final topOffset = (minutesFromEnd * 1.5).clamp(0.0, gapHeight);
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          connector,
-          Positioned(
-            top: topOffset,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(child: _buildNowLineContent()),
-          ),
-        ],
-      );
+  List<_TaskLayout> _calculateTaskLayouts(List<Task> tasks) {
+    if (tasks.isEmpty) return [];
+
+    final layouts = tasks.map((t) => _TaskLayout(t)).toList();
+    List<List<_TaskLayout>> groups = [];
+
+    for (var layout in layouts) {
+      List<List<_TaskLayout>> overlappingGroups = [];
+      for (var group in groups) {
+        if (group.any((l) => _overlaps(l.task, layout.task))) {
+          overlappingGroups.add(group);
+        }
+      }
+
+      if (overlappingGroups.isEmpty) {
+        groups.add([layout]);
+      } else {
+        var firstGroup = overlappingGroups[0];
+        firstGroup.add(layout);
+        for (int i = 1; i < overlappingGroups.length; i++) {
+          firstGroup.addAll(overlappingGroups[i]);
+          groups.remove(overlappingGroups[i]);
+        }
+      }
     }
 
-    return connector;
+    for (var group in groups) {
+      group.sort((a, b) => a.task.startTime!.compareTo(b.task.startTime!));
+      int maxCol = 0;
+      for (var layout in group) {
+        int col = 0;
+        while (group.any(
+          (other) =>
+              other != layout &&
+              other.column == col &&
+              _overlaps(other.task, layout.task) &&
+              group.indexOf(other) < group.indexOf(layout),
+        )) {
+          col++;
+        }
+        layout.column = col;
+        if (col > maxCol) maxCol = col;
+      }
+      for (var layout in group) {
+        layout.totalColumns = maxCol + 1;
+      }
+    }
+
+    return layouts;
+  }
+
+  bool _overlaps(Task a, Task b) {
+    final startA = a.startTime!;
+    final endA = a.endTime ?? a.startTime!.add(const Duration(minutes: 30));
+    final startB = b.startTime!;
+    final endB = b.endTime ?? b.startTime!.add(const Duration(minutes: 30));
+    return startA.isBefore(endB) && endA.isAfter(startB);
   }
 }
 
-class DashedLinePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    const double dashHeight = 4;
-    const double dashSpace = 4;
-    double startY = 0;
-
-    final x = size.width / 2;
-
-    while (startY < size.height) {
-      canvas.drawLine(Offset(x, startY), Offset(x, startY + dashHeight), paint);
-      startY += dashHeight + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+class _TaskLayout {
+  final Task task;
+  int column = 0;
+  int totalColumns = 1;
+  _TaskLayout(this.task);
 }

@@ -45,9 +45,7 @@ class _DayViewState extends State<DayView> {
   void _openAddTask({DateTime? startTime}) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AddTaskScreen(
-          initialDate: widget.date,
-        ),
+        builder: (context) => AddTaskScreen(initialDate: widget.date),
       ),
     );
   }
@@ -81,7 +79,11 @@ class _DayViewState extends State<DayView> {
         padding: const EdgeInsets.only(top: 100.0),
         child: Column(
           children: [
-            Icon(Icons.event_note, size: 60, color: Colors.grey.withOpacity(0.3)),
+            Icon(
+              Icons.event_note,
+              size: 60,
+              color: Colors.grey.withOpacity(0.3),
+            ),
             const SizedBox(height: 16),
             Text(
               'No plans yet',
@@ -100,15 +102,18 @@ class _DayViewState extends State<DayView> {
   List<Widget> _buildTimeline(List<Task> tasks) {
     List<Widget> widgets = [];
     final now = DateTime.now();
-    final isToday = widget.date.year == now.year &&
+    final isToday =
+        widget.date.year == now.year &&
         widget.date.month == now.month &&
         widget.date.day == now.day;
 
     if (isToday && tasks.isNotEmpty && now.isBefore(tasks.first.startTime!)) {
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: _buildNowLineContent(),
-      ));
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: _buildNowLineContent(),
+        ),
+      );
     }
 
     for (int i = 0; i < tasks.length; i++) {
@@ -128,10 +133,12 @@ class _DayViewState extends State<DayView> {
     if (isToday &&
         tasks.isNotEmpty &&
         now.isAfter(tasks.last.endTime ?? tasks.last.startTime!)) {
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: _buildNowLineContent(),
-      ));
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: _buildNowLineContent(),
+        ),
+      );
     }
 
     return widgets;
@@ -156,18 +163,12 @@ class _DayViewState extends State<DayView> {
         const SizedBox(
           width: 30,
           child: Center(
-            child: CircleAvatar(
-              radius: 4,
-              backgroundColor: Colors.red,
-            ),
+            child: CircleAvatar(radius: 4, backgroundColor: Colors.red),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Container(
-            height: 2,
-            color: Colors.red.withOpacity(0.5),
-          ),
+          child: Container(height: 2, color: Colors.red.withOpacity(0.5)),
         ),
       ],
     );
@@ -175,8 +176,16 @@ class _DayViewState extends State<DayView> {
 
   Widget _buildTaskRow(Task task) {
     final startTime = DateFormat('HH:mm').format(task.startTime!);
-    final endTime = task.endTime != null ? DateFormat('HH:mm').format(task.endTime!) : '';
+    final endTime = task.endTime != null
+        ? DateFormat('HH:mm').format(task.endTime!)
+        : '';
     final duration = task.endTime?.difference(task.startTime!).inMinutes ?? 0;
+
+    final endsNextDay =
+        task.endTime != null &&
+        (task.endTime!.day != task.startTime!.day ||
+            task.endTime!.month != task.startTime!.month ||
+            task.endTime!.year != task.startTime!.year);
 
     // Calculate height logic
     // 1 minute = 1.5 logical pixels, but clamped between 50 and 400
@@ -195,10 +204,12 @@ class _DayViewState extends State<DayView> {
     final isDone = task.isDone;
 
     final now = DateTime.now();
-    final isToday = widget.date.year == now.year &&
+    final isToday =
+        widget.date.year == now.year &&
         widget.date.month == now.month &&
         widget.date.day == now.day;
-    final isNowInTask = isToday &&
+    final isNowInTask =
+        isToday &&
         now.isAfter(task.startTime!) &&
         (task.endTime == null || now.isBefore(task.endTime!));
 
@@ -217,7 +228,8 @@ class _DayViewState extends State<DayView> {
               children: [
                 Padding(
                   padding: EdgeInsets.only(
-                      top: (duration >= 5 && task.endTime != null) ? 13.0 : 0),
+                    top: (duration >= 5 && task.endTime != null) ? 13.0 : 0,
+                  ),
                   child: Text(
                     startTime,
                     style: const TextStyle(
@@ -230,12 +242,29 @@ class _DayViewState extends State<DayView> {
                 if (duration >= 5 && task.endTime != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 13.0),
-                    child: Text(
-                      endTime,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          endTime,
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (endsNextDay)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 2),
+                            child: Text(
+                              '+1',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
               ],
@@ -354,21 +383,26 @@ class _DayViewState extends State<DayView> {
                               Row(
                                 children: [
                                   Text(
-                                    duration >= 5 && task.endTime != null ? '$startTime - $endTime' : startTime,
+                                    duration >= 5 && task.endTime != null
+                                        ? '$startTime - $endTime${endsNextDay ? " (+1)" : ""}'
+                                        : startTime,
                                     style: TextStyle(
                                       color: Colors.black.withOpacity(0.6),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
-                                      decoration:
-                                          isDone ? TextDecoration.lineThrough : null,
+                                      decoration: isDone
+                                          ? TextDecoration.lineThrough
+                                          : null,
                                     ),
                                   ),
                                   if (isRecurring) ...[
                                     const SizedBox(width: 4),
-                                    Icon(Icons.repeat,
-                                        size: 14, color: Colors.black.withOpacity(0.5)),
+                                    Icon(
+                                      Icons.repeat,
+                                      size: 14,
+                                      color: Colors.black.withOpacity(0.5),
+                                    ),
                                   ],
-
                                 ],
                               ),
                               const SizedBox(height: 4),
@@ -376,11 +410,14 @@ class _DayViewState extends State<DayView> {
                               Text(
                                 task.title,
                                 style: TextStyle(
-                                  color: isDone ? Colors.black54 : Colors.black87,
+                                  color: isDone
+                                      ? Colors.black54
+                                      : Colors.black87,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  decoration:
-                                      task.isDone ? TextDecoration.lineThrough : null,
+                                  decoration: task.isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                   decorationColor: Colors.black54,
                                 ),
                               ),
@@ -400,8 +437,11 @@ class _DayViewState extends State<DayView> {
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
-                                    Icon(Icons.checklist,
-                                        size: 14, color: Colors.black54),
+                                    Icon(
+                                      Icons.checklist,
+                                      size: 14,
+                                      color: Colors.black54,
+                                    ),
                                     const SizedBox(width: 4),
                                     Text(
                                       '${task.subtasks.where((s) => s.isDone).length}/${task.subtasks.length}',
@@ -478,10 +518,12 @@ class _DayViewState extends State<DayView> {
     final gapHeight = (gap.inMinutes * 1.5).clamp(20.0, 180.0);
 
     final now = DateTime.now();
-    final isToday = widget.date.year == now.year &&
+    final isToday =
+        widget.date.year == now.year &&
         widget.date.month == now.month &&
         widget.date.day == now.day;
-    final isNowInGap = isToday &&
+    final isNowInGap =
+        isToday &&
         now.isAfter(current.endTime!) &&
         now.isBefore(next.startTime!);
 
@@ -491,7 +533,6 @@ class _DayViewState extends State<DayView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(width: 45 + 8), // Indent for Node column
-
           // The Line Column
           SizedBox(
             width: 30,
@@ -513,8 +554,11 @@ class _DayViewState extends State<DayView> {
                 if (gap.inMinutes >= 15) ...[
                   Row(
                     children: [
-                      Icon(Icons.access_time,
-                          size: 14, color: Colors.grey[400]),
+                      Icon(
+                        Icons.access_time,
+                        size: 14,
+                        color: Colors.grey[400],
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         '${gap.inHours > 0 ? '${gap.inHours}h ' : ''}${gap.inMinutes % 60}m free',
@@ -570,11 +614,7 @@ class DashedLinePainter extends CustomPainter {
     final x = size.width / 2;
 
     while (startY < size.height) {
-      canvas.drawLine(
-        Offset(x, startY),
-        Offset(x, startY + dashHeight),
-        paint,
-      );
+      canvas.drawLine(Offset(x, startY), Offset(x, startY + dashHeight), paint);
       startY += dashHeight + dashSpace;
     }
   }

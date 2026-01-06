@@ -159,7 +159,7 @@ class _DayViewState extends State<DayView> {
                         availableWidth),
                 width: (1.0 / layout.totalColumns) * availableWidth,
                 height: height.clamp(
-                  _TimelineSegment.minTaskHeight,
+                  taskSegment.minTaskHeight,
                   double.infinity,
                 ),
                 child: _buildTaskCard(task, isCompact),
@@ -370,7 +370,10 @@ class _DayViewState extends State<DayView> {
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 0),
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: isCompact ? 10 : 11,
+        ),
         decoration: BoxDecoration(
           color: isDone ? Colors.grey[100] : color.withOpacity(0.15),
           borderRadius: BorderRadius.circular(8),
@@ -590,7 +593,7 @@ abstract class _TimelineSegment {
   final DateTime endTime;
   final bool isCompact;
 
-  static const double minTaskHeight = 40.0;
+  double get minTaskHeight => isCompact ? 56.0 : 66.0;
   double get basePixelsPerMinute => isCompact ? (80.0 / 60.0) : (140.0 / 60.0);
   static const double minFreeTimeHeight = 20.0;
   double get collapsedFreeTimeHeight => isCompact ? 50.0 : 70.0;
@@ -625,16 +628,13 @@ class _TaskBlockSegment extends _TimelineSegment {
               .inMinutes;
       if (duration <= 0) continue;
 
-      double neededHeight = _TimelineSegment.minTaskHeight;
+      double neededHeight = minTaskHeight;
       if (!isCompact) {
-        // In regular mode, content defines min height
-        // Title (~20) + Padding (16)
-        neededHeight = 40;
         if (task.description.isNotEmpty) {
-          neededHeight += 25; // space for description
+          neededHeight += 25;
         }
         if (task.subtasks.isNotEmpty) {
-          neededHeight += 20; // space for subtask progress
+          neededHeight += 20;
         }
       }
 
@@ -646,7 +646,7 @@ class _TaskBlockSegment extends _TimelineSegment {
 
     _pixelsPerMinute = maxNeededPpm;
     _height = (durationInMinutes * _pixelsPerMinute).clamp(
-      isCompact ? _TimelineSegment.minTaskHeight : 60.0,
+      minTaskHeight,
       double.infinity,
     );
   }

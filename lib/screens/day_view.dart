@@ -110,7 +110,12 @@ class _DayViewState extends State<DayView> {
       backgroundWidgets.add(segment.buildWidget(context, timeLineWidth));
       currentY += segment.height;
     }
-    final totalTimelineHeight = currentY > 0 ? currentY : 400.0;
+    if (segments.isNotEmpty) {
+      backgroundWidgets.add(
+        _buildLastTimeLabel(segments.last.endTime, timeLineWidth),
+      );
+    }
+    final totalTimelineHeight = currentY > 0 ? currentY + 20 : 400.0;
 
     return SingleChildScrollView(
       child: Padding(
@@ -232,6 +237,36 @@ class _DayViewState extends State<DayView> {
     }
 
     return segments;
+  }
+
+  Widget _buildLastTimeLabel(DateTime time, double timeLineWidth) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: timeLineWidth,
+          child: Transform.translate(
+            offset: const Offset(0, -8),
+            child: Text(
+              DateFormat('HH:mm').format(time),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: Colors.grey[100]!)),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildNowLine(
@@ -485,30 +520,34 @@ class _TaskBlockSegment extends _TimelineSegment {
   Widget buildWidget(BuildContext context, double timeLineWidth) {
     return SizedBox(
       height: height,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          SizedBox(
-            width: timeLineWidth,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4.0),
-              child: Text(
-                DateFormat('HH:mm').format(startTime),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: timeLineWidth,
+                child: Transform.translate(
+                  offset: const Offset(0, -8),
+                  child: Text(
+                    DateFormat('HH:mm').format(startTime),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey[100]!)),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: Colors.grey[100]!)),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -539,48 +578,54 @@ class _FreeTimeSegment extends _TimelineSegment {
 
   @override
   Widget buildWidget(BuildContext context, double timeLineWidth) {
-    if (durationInMinutes <= 30) {
-      return SizedBox(
-        height: height,
-        child: Row(
-          children: [
-            SizedBox(width: timeLineWidth),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: Colors.grey[100]!)),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return SizedBox(
       height: height,
-      child: Row(
+      child: Stack(
         children: [
-          SizedBox(width: timeLineWidth),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey[100]!)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: timeLineWidth,
+                child: Transform.translate(
+                  offset: const Offset(0, -8),
+                  child: Text(
+                    DateFormat('HH:mm').format(startTime),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-              child: Text(
-                durationInMinutes >= 60
-                    ? '${durationInMinutes ~/ 60}h ${durationInMinutes % 60}min free'
-                    : '$durationInMinutes min free',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: Colors.grey[100]!)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (durationInMinutes > 30)
+            Positioned.fill(
+              left: timeLineWidth,
+              child: Container(
+                alignment: Alignment.center,
+                child: Text(
+                  durationInMinutes >= 60
+                      ? '${durationInMinutes ~/ 60}h ${durationInMinutes % 60}min free'
+                      : '$durationInMinutes min free',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

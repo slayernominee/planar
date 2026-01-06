@@ -31,6 +31,8 @@ class IconKeywords {
     'history': ['past', 'recent', 'clock', 'back', 'time', 'log'],
     'hourglass_empty': ['wait', 'loading', 'pending', 'time', 'sand'],
     'pending_actions': ['wait', 'todo', 'task', 'list', 'clipboard'],
+    'bedtime': ['sleep', 'night', 'moon', 'rest', 'bed'],
+    'hourglass_full': ['wait', 'timer', 'sand', 'pending'],
 
     // Work & Office
     'work': ['job', 'career', 'briefcase', 'office', 'business', 'professional'],
@@ -60,6 +62,9 @@ class IconKeywords {
     'laptop': ['computer', 'macbook', 'pc', 'device', 'tech', 'work'],
     'keyboard': ['type', 'input', 'computer', 'text'],
     'mouse': ['click', 'pointer', 'computer', 'device'],
+    'badge': ['id', 'card', 'work', 'employee', 'pass'],
+    'cases': ['briefcase', 'work', 'bag', 'travel'],
+    'table_chart': ['data', 'analytics', 'spreadsheet', 'grid'],
 
     // Education
     'school': ['education', 'university', 'college', 'student', 'learn', 'building', 'graduation'],
@@ -73,6 +78,8 @@ class IconKeywords {
     'edit_note': ['write', 'pencil', 'edit', 'document'],
     'calculate': ['math', 'calculator', 'numbers', 'finance', 'add', 'subtract'],
     'science': ['chemistry', 'flask', 'lab', 'experiment', 'biology', 'physics', 'research'],
+    'psychology': ['brain', 'mind', 'thought', 'mental', 'health'],
+    'lightbulb_circle': ['idea', 'smart', 'think', 'solution'],
 
     // Health & Fitness
     'fitness_center': ['gym', 'workout', 'exercise', 'weight', 'dumbbell', 'lifting', 'muscle', 'train', 'sport'],
@@ -96,6 +103,12 @@ class IconKeywords {
     'healing': ['bandage', 'bandaid', 'health', 'fix', 'medical', 'wound'],
     'medication': ['pill', 'drug', 'capsule', 'medicine', 'vitamin', 'health'],
     'medical_services': ['bag', 'doctor', 'health', 'kit', 'first aid'],
+    'hiking': ['walk', 'trek', 'mountain', 'nature', 'exercise'],
+    'downhill_skiing': ['snow', 'winter', 'sport', 'mountain'],
+    'kayaking': ['boat', 'water', 'river', 'sport', 'paddle'],
+    'skateboarding': ['board', 'skate', 'sport', 'urban'],
+    'rowing': ['boat', 'water', 'exercise', 'gym', 'sport'],
+    'monitor_weight': ['scale', 'weight', 'health', 'diet'],
 
     // Food & Dining
     'restaurant': ['fork', 'knife', 'food', 'eat', 'dinner', 'lunch', 'meal', 'cafe'],
@@ -113,6 +126,12 @@ class IconKeywords {
     'local_pizza': ['slice', 'food', 'italian', 'fast', 'snack'],
     'bakery_dining': ['croissant', 'bread', 'food', 'breakfast', 'morning'],
     'kitchen': ['fridge', 'refrigerator', 'appliance', 'food', 'cook'],
+    'icecream': ['dessert', 'sweet', 'cold', 'summer', 'treat'],
+    'takeout_dining': ['bag', 'food', 'fast', 'delivery', 'pickup'],
+    'egg': ['breakfast', 'food', 'cooking', 'protein'],
+    'soup_kitchen': ['bowl', 'food', 'warm', 'meal'],
+    'ramen_dining': ['noodles', 'soup', 'japanese', 'food', 'bowl'],
+    'brunch_dining': ['breakfast', 'lunch', 'croissant', 'drink', 'meal'],
 
     // Shopping & Finance
     'shopping_cart': ['buy', 'store', 'shop', 'groceries', 'market', 'ecommerce'],
@@ -128,6 +147,9 @@ class IconKeywords {
     'receipt_long': ['bill', 'invoice', 'paper', 'list', 'history'],
     'savings': ['piggy bank', 'money', 'finance', 'save', 'coin'],
     'euro': ['currency', 'money', 'finance', 'pay', 'cost'],
+    'currency_bitcoin': ['crypto', 'money', 'finance', 'digital', 'coin'],
+    'diamond': ['gem', 'jewelry', 'expensive', 'luxury', 'stone'],
+    'sell': ['tag', 'price', 'shop', 'store', 'discount'],
 
     // Travel & Transport
     'flight': ['plane', 'airplane', 'fly', 'travel', 'trip', 'airport', 'holiday'],
@@ -149,6 +171,11 @@ class IconKeywords {
     'luggage': ['suitcase', 'bag', 'travel', 'trip', 'airport', 'holiday'],
     'local_gas_station': ['fuel', 'pump', 'petrol', 'car', 'transport'],
     'ev_station': ['charge', 'electric', 'power', 'car', 'energy'],
+    'two_wheeler': ['motorcycle', 'bike', 'transport', 'vehicle'],
+    'pedal_bike': ['bicycle', 'cycle', 'ride', 'sport'],
+    'moped': ['scooter', 'bike', 'transport', 'city'],
+    'airport_shuttle': ['bus', 'van', 'transport', 'travel', 'airport'],
+    'car_rental': ['car', 'key', 'rent', 'transport', 'travel'],
 
     // Home & Lifestyle
     'king_bed': ['sleep', 'rest', 'hotel', 'bedroom', 'furniture', 'nap'],
@@ -171,6 +198,17 @@ class IconKeywords {
     'wb_sunny': ['sun', 'weather', 'bright', 'day', 'light'],
     'nightlight': ['moon', 'star', 'sleep', 'dark', 'weather', 'evening'],
     'ac_unit': ['snow', 'cold', 'air', 'weather', 'winter', 'cool'],
+    'wb_twilight': ['sunset', 'sunrise', 'sun', 'morning', 'evening'],
+    'wb_cloudy': ['cloud', 'weather', 'overcast', 'grey'],
+    'water_drop': ['rain', 'water', 'weather', 'wet', 'drop'],
+    'umbrella': ['rain', 'weather', 'wet', 'protection'],
+    'air': ['wind', 'weather', 'blow', 'breeze'],
+    'thermostat': ['temperature', 'heat', 'cold', 'weather', 'control'],
+    'yard': ['garden', 'grass', 'nature', 'outdoors', 'home'],
+    'living': ['room', 'sofa', 'chair', 'home', 'furniture'],
+    'bed': ['sleep', 'rest', 'hotel', 'furniture', 'room'],
+    'garage': ['car', 'parking', 'home', 'building'],
+    'shower': ['bathroom', 'water', 'wash', 'clean'],
 
     // Social & Entertainment
     'music_note': ['song', 'audio', 'sound', 'melody', 'listen', 'tune'],
@@ -187,6 +225,14 @@ class IconKeywords {
     'stadium': ['arena', 'sport', 'event', 'concert'],
     'celebration': ['party', 'confetti', 'fun', 'event', 'holiday'],
     'card_giftcard': ['present', 'box', 'birthday', 'christmas', 'reward'],
+    'piano': ['music', 'instrument', 'play', 'keys', 'song'],
+    'mic': ['microphone', 'record', 'voice', 'audio', 'sound'],
+    'radio': ['music', 'listen', 'broadcast', 'audio', 'sound'],
+    'podcasts': ['audio', 'listen', 'talk', 'radio', 'show'],
+    'album': ['music', 'record', 'cd', 'vinyl', 'song'],
+    'sports_bar': ['drink', 'alcohol', 'beer', 'game', 'pub'],
+    'casino': ['gamble', 'game', 'dice', 'card', 'bet'],
+    'toys': ['play', 'game', 'child', 'fun', 'block'],
 
     // Miscellaneous
     'star': ['favorite', 'rate', 'best', 'featured', 'rating'],
@@ -208,5 +254,11 @@ class IconKeywords {
     'fingerprint': ['id', 'auth', 'security', 'touch', 'login'],
     'bolt': ['lightning', 'energy', 'electric', 'power', 'charge', 'fast', 'flash'],
     'auto_awesome': ['stars', 'magic', 'sparkle', 'ai', 'smart', 'enhance'],
+    'rocket_launch': ['space', 'fly', 'start', 'launch', 'fast'],
+    'whatshot': ['fire', 'flame', 'hot', 'burn', 'trend'],
+    'key': ['lock', 'security', 'password', 'access', 'door'],
+    'shield': ['protect', 'security', 'guard', 'defense', 'safe'],
+    'flag': ['banner', 'country', 'mark', 'goal', 'finish'],
+    'push_pin': ['marker', 'location', 'save', 'keep', 'note'],
   };
 }

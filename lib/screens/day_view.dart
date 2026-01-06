@@ -287,13 +287,7 @@ class _DayViewState extends State<DayView> {
             ),
           ),
         ),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey[100]!)),
-            ),
-          ),
-        ),
+        Expanded(child: Container()),
       ],
     );
   }
@@ -691,13 +685,7 @@ class _TaskBlockSegment extends _TimelineSegment {
                   ),
                 ),
               ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.grey[100]!)),
-                  ),
-                ),
-              ),
+              Expanded(child: Container()),
             ],
           ),
         ],
@@ -756,15 +744,6 @@ class _FreeTimeSegment extends _TimelineSegment {
                 ),
               ),
               Expanded(child: Container()),
-            ],
-          ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.grey[100]!)),
-                  ),
-                ),
-              ),
             ],
           ),
           if (durationInMinutes > 30)

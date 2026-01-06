@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/task.dart';
 import '../providers/task_provider.dart';
+import '../widgets/icon_picker_dialog.dart';
 
 class AddTaskScreen extends StatefulWidget {
   final DateTime initialDate;
@@ -33,32 +34,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   late RecurrenceType _recurrence;
   List<int> _reminders = [];
   List<Subtask> _subtasks = [];
-
-  final List<IconData> _icons = [
-    Icons.work,
-    Icons.school,
-    Icons.fitness_center,
-    Icons.shopping_cart,
-    Icons.restaurant,
-    Icons.local_cafe,
-    Icons.flight,
-    Icons.train,
-    Icons.directions_car,
-    Icons.home,
-    Icons.local_hospital,
-    Icons.book,
-    Icons.computer,
-    Icons.phone,
-    Icons.email,
-    Icons.music_note,
-    Icons.movie,
-    Icons.sports_soccer,
-    Icons.pets,
-    Icons.park,
-    Icons.warning_amber_rounded,
-    Icons.lightbulb_outline,
-    Icons.star_border,
-  ];
 
   final List<int> _colors = [
     0xFF90CAF9, // Blue 200
@@ -96,7 +71,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     // Default times if new and not provided
     if (_startTime == null && widget.taskToEdit == null) {
       final now = DateTime.now();
-      _startTime = DateTime(now.year, now.month, now.day, now.hour + 1, 0);
+      _startTime = DateTime(
+          _selectedDate.year, _selectedDate.month, _selectedDate.day, now.hour + 1, 0);
       _endTime = _startTime!.add(const Duration(minutes: 15));
     }
     if (_endTime == null && _startTime != null) {
@@ -110,6 +86,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickIcon() async {
+    final IconData? picked = await showDialog(
+      context: context,
+      builder: (context) => const IconPickerDialog(),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedIconCodePoint = picked.codePoint;
+      });
+    }
   }
 
   Future<void> _pickDate() async {
@@ -134,7 +122,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = DateTime(picked.year, picked.month, picked.day);
+        final newDate = DateTime(picked.year, picked.month, picked.day);
+        if (_startTime != null) {
+          _startTime = DateTime(newDate.year, newDate.month, newDate.day,
+              _startTime!.hour, _startTime!.minute);
+        }
+        if (_endTime != null) {
+          _endTime = DateTime(newDate.year, newDate.month, newDate.day,
+              _endTime!.hour, _endTime!.minute);
+        }
+        _selectedDate = newDate;
       });
     }
   }
@@ -170,7 +167,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     });
   }
 
-  void _saveTask() {
+  Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
     final newTask = Task(
@@ -208,7 +205,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   // Decouple this instance from the series to avoid accidental
                   // duplication or future updates affecting it.
                   final standaloneTask = newTask.copyWith(
@@ -217,40 +214,40 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ? RecurrenceType.none
                         : _recurrence,
                   );
-                  provider.updateTask(standaloneTask);
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                  await provider.updateTask(standaloneTask);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('Only This',
                     style: TextStyle(color: Colors.teal)),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   // Only propagate recurrence change if it actually changed,
                   // otherwise keep child tasks as non-recurring.
                   final taskToUpdate = (widget.taskToEdit?.recurrence == _recurrence)
                       ? newTask.copyWith(recurrence: RecurrenceType.none)
                       : newTask;
-                  provider.updateSeries(
+                  await provider.updateSeries(
                     taskToUpdate,
                     all: false,
                     futureFrom: newTask.date,
                   );
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('This & Future',
                     style: TextStyle(color: Colors.teal)),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   // Only propagate recurrence change if it actually changed.
                   final taskToUpdate = (widget.taskToEdit?.recurrence == _recurrence)
                       ? newTask.copyWith(recurrence: RecurrenceType.none)
                       : newTask;
-                  provider.updateSeries(taskToUpdate, all: true);
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                  await provider.updateSeries(taskToUpdate, all: true);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('All', style: TextStyle(color: Colors.teal)),
               ),
@@ -261,16 +258,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         if (widget.taskToEdit!.recurrence == _recurrence) {
           newTask.recurrence = RecurrenceType.none;
         }
-        provider.updateTask(newTask);
-        Navigator.of(context).pop();
+        await provider.updateTask(newTask);
+        if (mounted) Navigator.of(context).pop();
       }
     } else {
-      provider.addTask(newTask);
-      Navigator.of(context).pop();
+      await provider.addTask(newTask);
+      if (mounted) Navigator.of(context).pop();
     }
   }
 
-  void _deleteTask() {
+  Future<void> _deleteTask() async {
     if (widget.taskToEdit != null) {
       final task = widget.taskToEdit!;
       if (task.seriesId != null) {
@@ -290,34 +287,34 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     const Text('Cancel', style: TextStyle(color: Colors.grey)),
               ),
               TextButton(
-                onPressed: () {
-                  context.read<TaskProvider>().deleteTask(task.id);
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                onPressed: () async {
+                  await context.read<TaskProvider>().deleteTask(task.id);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('Only This',
                     style: TextStyle(color: Colors.teal)),
               ),
               TextButton(
-                onPressed: () {
-                  context.read<TaskProvider>().deleteSeries(
+                onPressed: () async {
+                  await context.read<TaskProvider>().deleteSeries(
                         task.seriesId!,
                         all: false,
                         futureFrom: task.date,
                       );
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('This & Future',
                     style: TextStyle(color: Colors.teal)),
               ),
               TextButton(
-                onPressed: () {
-                  context
+                onPressed: () async {
+                  await context
                       .read<TaskProvider>()
                       .deleteSeries(task.seriesId!, all: true);
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (mounted) Navigator.of(context).pop();
                 },
                 child: const Text('All', style: TextStyle(color: Colors.red)),
               ),
@@ -325,8 +322,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           ),
         );
       } else {
-        context.read<TaskProvider>().deleteTask(task.id);
-        Navigator.of(context).pop();
+        await context.read<TaskProvider>().deleteTask(task.id);
+        if (mounted) Navigator.of(context).pop();
       }
     }
   }
@@ -568,24 +565,50 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
-            // Title
-            TextFormField(
-              controller: _titleController,
-              style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                hintText: 'Title',
-                hintStyle: TextStyle(color: Colors.grey),
-                border: InputBorder.none,
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a title';
-                }
-                return null;
-              },
+            // Title & Icon Row
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: _pickIcon,
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _selectedIconCodePoint != null
+                          ? IconData(_selectedIconCodePoint!,
+                              fontFamily: 'MaterialIcons')
+                          : Icons.sentiment_satisfied_alt,
+                      color: Colors.black54,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: TextFormField(
+                    controller: _titleController,
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold),
+                    decoration: const InputDecoration(
+                      hintText: 'Title',
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a title';
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -686,45 +709,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           ? const Icon(Icons.check,
                               color: Colors.white, size: 20)
                           : null,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Icon Picker
-            const Text(
-              'Icon',
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 50,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _icons.length,
-                itemBuilder: (context, index) {
-                  final icon = _icons[index];
-                  final isSelected = _selectedIconCodePoint == icon.codePoint;
-                  return GestureDetector(
-                    onTap: () => setState(() =>
-                        _selectedIconCodePoint = isSelected ? null : icon.codePoint),
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color:
-                            isSelected ? Colors.grey[300] : Colors.grey[100],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        icon,
-                        size: 20,
-                        color: isSelected ? Colors.black : Colors.grey,
-                      ),
                     ),
                   );
                 },

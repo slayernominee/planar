@@ -7,6 +7,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("androidx.core:core-ktx:1.13.1")
+    }
+}
+
 android {
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()

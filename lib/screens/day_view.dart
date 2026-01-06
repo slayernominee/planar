@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../providers/task_provider.dart';
+import '../providers/settings_provider.dart';
 import 'add_task_screen.dart';
 
 class DayView extends StatefulWidget {
@@ -44,8 +45,8 @@ class _DayViewState extends State<DayView> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<TaskProvider>(
-      builder: (context, taskProvider, child) {
+    return Consumer2<TaskProvider, SettingsProvider>(
+      builder: (context, taskProvider, settingsProvider, child) {
         final tasks = taskProvider.getTasksFor(widget.date);
         final timedTasks = tasks.where((t) => t.startTime != null).toList();
 
@@ -53,7 +54,7 @@ class _DayViewState extends State<DayView> {
           color: Colors.white,
           child: timedTasks.isEmpty
               ? _buildEmptyState()
-              : _build24hTimeline(timedTasks),
+              : _build24hTimeline(timedTasks, settingsProvider.isCompact),
         );
       },
     );
@@ -85,7 +86,7 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  Widget _build24hTimeline(List<Task> tasks) {
+  Widget _build24hTimeline(List<Task> tasks, bool isCompact) {
     const double timeLineWidth = 60.0;
     final availableWidth =
         MediaQuery.of(context).size.width - timeLineWidth - 32;
@@ -98,7 +99,7 @@ class _DayViewState extends State<DayView> {
     );
 
     // 1. Create Timeline Segments
-    final segments = _createTimelineSegments(tasks, dayStart);
+    final segments = _createTimelineSegments(tasks, dayStart, isCompact);
 
     // 2. Calculate offsets and build widgets
     final backgroundWidgets = <Widget>[];
@@ -115,62 +116,58 @@ class _DayViewState extends State<DayView> {
         _buildLastTimeLabel(segments.last.endTime, timeLineWidth),
       );
     }
-    final totalTimelineHeight = currentY > 0 ? currentY + 20 : 400.0;
 
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: SizedBox(
-          height: totalTimelineHeight,
-          child: Stack(
-            children: [
-              Column(children: backgroundWidgets),
-              ...layouts.map((layout) {
-                final task = layout.task;
-                _TaskBlockSegment? taskSegment;
-                for (var s in segments) {
-                  if (s is _TaskBlockSegment && s.tasks.contains(task)) {
-                    taskSegment = s;
-                    break;
-                  }
+        child: Stack(
+          children: [
+            Column(children: backgroundWidgets),
+            ...layouts.map((layout) {
+              final task = layout.task;
+              _TaskBlockSegment? taskSegment;
+              for (var s in segments) {
+                if (s is _TaskBlockSegment && s.tasks.contains(task)) {
+                  taskSegment = s;
+                  break;
                 }
+              }
 
-                if (taskSegment == null) return const SizedBox.shrink();
+              if (taskSegment == null) return const SizedBox.shrink();
 
-                final segmentTop = segmentOffsets[taskSegment]!;
-                final topInSegment =
-                    (task.startTime!
-                        .difference(taskSegment.startTime)
-                        .inMinutes) *
-                    taskSegment.pixelsPerMinute;
-                final top = segmentTop + topInSegment;
+              final segmentTop = segmentOffsets[taskSegment]!;
+              final topInSegment =
+                  (task.startTime!
+                      .difference(taskSegment.startTime)
+                      .inMinutes) *
+                  taskSegment.pixelsPerMinute;
+              final top = segmentTop + topInSegment;
 
-                final duration =
-                    (task.endTime ??
-                            task.startTime!.add(const Duration(minutes: 30)))
-                        .difference(task.startTime!)
-                        .inMinutes;
-                final height = duration * taskSegment.pixelsPerMinute;
+              final duration =
+                  (task.endTime ??
+                          task.startTime!.add(const Duration(minutes: 30)))
+                      .difference(task.startTime!)
+                      .inMinutes;
+              final height = duration * taskSegment.pixelsPerMinute;
 
-                return Positioned(
-                  top: top,
-                  left:
-                      timeLineWidth +
-                      (layout.column *
-                          (1.0 / layout.totalColumns) *
-                          availableWidth),
-                  width: (1.0 / layout.totalColumns) * availableWidth,
-                  height: height.clamp(
-                    _TimelineSegment.minTaskHeight,
-                    totalTimelineHeight,
-                  ),
-                  child: _buildTaskCard(task),
-                );
-              }).toList(),
-              if (_isToday())
-                _buildNowLine(timeLineWidth, segments, segmentOffsets),
-            ],
-          ),
+              return Positioned(
+                top: top,
+                left:
+                    timeLineWidth +
+                    (layout.column *
+                        (1.0 / layout.totalColumns) *
+                        availableWidth),
+                width: (1.0 / layout.totalColumns) * availableWidth,
+                height: height.clamp(
+                  _TimelineSegment.minTaskHeight,
+                  double.infinity,
+                ),
+                child: _buildTaskCard(task, isCompact),
+              );
+            }).toList(),
+            if (_isToday())
+              _buildNowLine(timeLineWidth, segments, segmentOffsets),
+          ],
         ),
       ),
     );
@@ -186,11 +183,16 @@ class _DayViewState extends State<DayView> {
   List<_TimelineSegment> _createTimelineSegments(
     List<Task> tasks,
     DateTime dayStart,
+    bool isCompact,
   ) {
     final segments = <_TimelineSegment>[];
     if (tasks.isEmpty) {
       segments.add(
-        _FreeTimeSegment(dayStart, dayStart.add(const Duration(days: 1))),
+        _FreeTimeSegment(
+          dayStart,
+          dayStart.add(const Duration(days: 1)),
+          isCompact,
+        ),
       );
       return segments;
     }
@@ -204,7 +206,9 @@ class _DayViewState extends State<DayView> {
 
       // Add free time before this block
       if (firstTaskInBlock.startTime!.isAfter(cursor)) {
-        segments.add(_FreeTimeSegment(cursor, firstTaskInBlock.startTime!));
+        segments.add(
+          _FreeTimeSegment(cursor, firstTaskInBlock.startTime!, isCompact),
+        );
       }
 
       // Find all overlapping tasks for this block
@@ -230,7 +234,9 @@ class _DayViewState extends State<DayView> {
       }
 
       final blockStart = firstTaskInBlock.startTime!;
-      segments.add(_TaskBlockSegment(blockStart, blockEnd, taskBlock));
+      segments.add(
+        _TaskBlockSegment(blockStart, blockEnd, taskBlock, isCompact),
+      );
 
       cursor = blockEnd;
       i = j;
@@ -240,20 +246,43 @@ class _DayViewState extends State<DayView> {
   }
 
   Widget _buildLastTimeLabel(DateTime time, double timeLineWidth) {
+    final endsNextDay =
+        time.day != widget.date.day ||
+        time.month != widget.date.month ||
+        time.year != widget.date.year;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: timeLineWidth,
-          child: Transform.translate(
-            offset: const Offset(0, -8),
-            child: Text(
-              DateFormat('HH:mm').format(time),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+          height: 0,
+          child: OverflowBox(
+            minHeight: 40,
+            maxHeight: 40,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    DateFormat('HH:mm').format(time),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (endsNextDay)
+                    Text(
+                      '+1',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -321,12 +350,20 @@ class _DayViewState extends State<DayView> {
     );
   }
 
-  Widget _buildTaskCard(Task task) {
+  Widget _buildTaskCard(Task task, bool isCompact) {
     final color = Color(task.colorValue);
     final isDone = task.isDone;
     final iconData = task.iconCodePoint != null
         ? IconData(task.iconCodePoint!, fontFamily: 'MaterialIcons')
         : Icons.event;
+    final isRecurring = task.seriesId != null;
+    final startTimeStr = DateFormat('HH:mm').format(task.startTime!);
+    final endTimeStr = task.endTime != null
+        ? DateFormat('HH:mm').format(task.endTime!)
+        : '?';
+
+    final completedSubtasks = task.subtasks.where((s) => s.isDone).length;
+    final totalSubtasks = task.subtasks.length;
 
     return GestureDetector(
       onTap: () {
@@ -338,7 +375,7 @@ class _DayViewState extends State<DayView> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 1),
+        margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 0),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isDone ? Colors.grey[100] : color.withOpacity(0.15),
@@ -349,43 +386,137 @@ class _DayViewState extends State<DayView> {
         ),
         child: Opacity(
           opacity: isDone ? 0.6 : 1.0,
-          child: SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Icon(iconData, color: color, size: 14),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        task.title,
-                        style: TextStyle(
-                          color: isDone ? Colors.black54 : Colors.black87,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          decoration: isDone
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: isCompact ? 36 : 44,
+                height: isCompact ? 36 : 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(isCompact ? 8 : 12),
+                  border: Border.all(color: color.withOpacity(0.2), width: 1),
                 ),
-                if (task.description.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    task.description,
-                    style: const TextStyle(color: Colors.black54, fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
+                child: Icon(iconData, color: color, size: isCompact ? 20 : 26),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: task.title,
+                              style: TextStyle(
+                                color: isDone ? Colors.black54 : Colors.black87,
+                                fontSize: isCompact ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' ($startTimeStr-$endTimeStr)',
+                              style: TextStyle(
+                                color: Colors.black38,
+                                fontSize: isCompact ? 11 : 13,
+                                fontWeight: FontWeight.normal,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            if (isRecurring)
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Icon(
+                                    Icons.repeat,
+                                    size: isCompact ? 12 : 14,
+                                    color: Colors.black26,
+                                  ),
+                                ),
+                              ),
+                            if (task.endTime != null &&
+                                (task.endTime!.day != task.startTime!.day ||
+                                    task.endTime!.month !=
+                                        task.startTime!.month ||
+                                    task.endTime!.year != task.startTime!.year))
+                              TextSpan(
+                                text: ' +1',
+                                style: TextStyle(
+                                  color: color.withOpacity(0.8),
+                                  fontSize: isCompact ? 10 : 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          ],
+                        ),
+                        softWrap: false,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      if (task.description.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          task.description,
+                          style: TextStyle(
+                            color: Colors.black54,
+                            fontSize: isCompact ? 10 : 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: isCompact ? 1 : 2,
+                        ),
+                      ],
+                      if (totalSubtasks > 0) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.checklist,
+                              size: isCompact ? 12 : 14,
+                              color: color.withOpacity(0.7),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '$completedSubtasks/$totalSubtasks tasks',
+                                style: TextStyle(
+                                  color: color.withOpacity(0.7),
+                                  fontSize: isCompact ? 10 : 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  final updated = task.copyWith(isDone: !task.isDone);
+                  context.read<TaskProvider>().updateTask(updated);
+                },
+                child: Icon(
+                  isDone ? Icons.check_circle : Icons.circle_outlined,
+                  color: isDone ? Colors.grey : color,
+                  size: 24,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -463,14 +594,15 @@ class _TaskLayout {
 abstract class _TimelineSegment {
   final DateTime startTime;
   final DateTime endTime;
+  final bool isCompact;
 
   static const double minTaskHeight = 40.0;
-  static const double basePixelsPerMinute = 80.0 / 60.0; // 80px per hour
+  double get basePixelsPerMinute => isCompact ? (80.0 / 60.0) : (140.0 / 60.0);
   static const double minFreeTimeHeight = 20.0;
-  static const double collapsedFreeTimeHeight = 50.0;
-  static const double freeTimeCollapseThresholdMinutes = 180; // 3 hours
+  double get collapsedFreeTimeHeight => isCompact ? 50.0 : 70.0;
+  double get freeTimeCollapseThresholdMinutes => isCompact ? 180 : 240;
 
-  _TimelineSegment(this.startTime, this.endTime);
+  _TimelineSegment(this.startTime, this.endTime, this.isCompact);
 
   int get durationInMinutes => endTime.difference(startTime).inMinutes;
   double get height;
@@ -484,29 +616,43 @@ class _TaskBlockSegment extends _TimelineSegment {
   late final double _pixelsPerMinute;
   late final double _height;
 
-  _TaskBlockSegment(DateTime startTime, DateTime endTime, this.tasks)
-    : super(startTime, endTime) {
-    double minDuration = double.infinity;
+  _TaskBlockSegment(
+    DateTime startTime,
+    DateTime endTime,
+    this.tasks,
+    bool isCompact,
+  ) : super(startTime, endTime, isCompact) {
+    double maxNeededPpm = basePixelsPerMinute;
+
     for (var task in tasks) {
       final duration =
           (task.endTime ?? task.startTime!.add(const Duration(minutes: 30)))
               .difference(task.startTime!)
               .inMinutes;
-      if (duration > 0 && duration < minDuration) {
-        minDuration = duration.toDouble();
+      if (duration <= 0) continue;
+
+      double neededHeight = _TimelineSegment.minTaskHeight;
+      if (!isCompact) {
+        // In regular mode, content defines min height
+        // Title (~20) + Padding (16)
+        neededHeight = 40;
+        if (task.description.isNotEmpty) {
+          neededHeight += 25; // space for description
+        }
+        if (task.subtasks.isNotEmpty) {
+          neededHeight += 20; // space for subtask progress
+        }
+      }
+
+      final neededPpm = neededHeight / duration;
+      if (neededPpm > maxNeededPpm) {
+        maxNeededPpm = neededPpm;
       }
     }
 
-    double ppm = _TimelineSegment.basePixelsPerMinute;
-    if (minDuration != double.infinity) {
-      final calculatedMinHeight = minDuration * ppm;
-      if (calculatedMinHeight < _TimelineSegment.minTaskHeight) {
-        ppm = _TimelineSegment.minTaskHeight / minDuration;
-      }
-    }
-    _pixelsPerMinute = ppm;
+    _pixelsPerMinute = maxNeededPpm;
     _height = (durationInMinutes * _pixelsPerMinute).clamp(
-      _TimelineSegment.minTaskHeight,
+      isCompact ? _TimelineSegment.minTaskHeight : 60.0,
       double.infinity,
     );
   }
@@ -521,21 +667,26 @@ class _TaskBlockSegment extends _TimelineSegment {
     return SizedBox(
       height: height,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 width: timeLineWidth,
-                child: Transform.translate(
-                  offset: const Offset(0, -8),
-                  child: Text(
-                    DateFormat('HH:mm').format(startTime),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                height: 0,
+                child: OverflowBox(
+                  minHeight: 40,
+                  maxHeight: 40,
+                  child: Center(
+                    child: Text(
+                      DateFormat('HH:mm').format(startTime),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -556,8 +707,8 @@ class _TaskBlockSegment extends _TimelineSegment {
 }
 
 class _FreeTimeSegment extends _TimelineSegment {
-  _FreeTimeSegment(DateTime startTime, DateTime endTime)
-    : super(startTime, endTime);
+  _FreeTimeSegment(DateTime startTime, DateTime endTime, bool isCompact)
+    : super(startTime, endTime, isCompact);
 
   @override
   double get pixelsPerMinute =>
@@ -565,14 +716,13 @@ class _FreeTimeSegment extends _TimelineSegment {
 
   @override
   double get height {
-    if (durationInMinutes > _TimelineSegment.freeTimeCollapseThresholdMinutes) {
-      return _TimelineSegment.collapsedFreeTimeHeight;
+    if (durationInMinutes > freeTimeCollapseThresholdMinutes) {
+      return collapsedFreeTimeHeight;
     }
-    final calculatedHeight =
-        durationInMinutes * _TimelineSegment.basePixelsPerMinute;
+    final calculatedHeight = durationInMinutes * basePixelsPerMinute;
     return calculatedHeight.clamp(
       _TimelineSegment.minFreeTimeHeight,
-      _TimelineSegment.collapsedFreeTimeHeight,
+      collapsedFreeTimeHeight,
     );
   }
 
@@ -581,25 +731,33 @@ class _FreeTimeSegment extends _TimelineSegment {
     return SizedBox(
       height: height,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
                 width: timeLineWidth,
-                child: Transform.translate(
-                  offset: const Offset(0, -8),
-                  child: Text(
-                    DateFormat('HH:mm').format(startTime),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                height: 0,
+                child: OverflowBox(
+                  minHeight: 40,
+                  maxHeight: 40,
+                  child: Center(
+                    child: Text(
+                      DateFormat('HH:mm').format(startTime),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
               ),
+              Expanded(child: Container()),
+            ],
+          ),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(

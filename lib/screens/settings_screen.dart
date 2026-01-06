@@ -6,6 +6,7 @@ import '../db/database_helper.dart';
 import '../providers/task_provider.dart';
 import '../models/task.dart';
 import '../services/notification_service.dart';
+import '../providers/settings_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -46,9 +47,9 @@ class SettingsScreen extends StatelessWidget {
         final provider = context.read<TaskProvider>();
         provider.clearCache();
         provider.loadTasksForDate(now);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Database cleared')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Database cleared')));
       }
     }
   }
@@ -108,9 +109,9 @@ class SettingsScreen extends StatelessWidget {
     }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('5 Sample tasks added')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('5 Sample tasks added')));
     }
   }
 
@@ -123,13 +124,48 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settingsProvider = context.watch<SettingsProvider>();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
       body: ListView(
         children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(
+              'Appearance',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.view_agenda_outlined, color: Colors.teal),
+            title: const Text('Day View Mode'),
+            subtitle: Text(settingsProvider.isCompact ? 'Compact' : 'Regular'),
+            trailing: SegmentedButton<DayViewMode>(
+              segments: const [
+                ButtonSegment<DayViewMode>(
+                  value: DayViewMode.regular,
+                  label: Text('Regular'),
+                  icon: Icon(Icons.view_day_outlined),
+                ),
+                ButtonSegment<DayViewMode>(
+                  value: DayViewMode.compact,
+                  label: Text('Compact'),
+                  icon: Icon(Icons.view_headline),
+                ),
+              ],
+              selected: {settingsProvider.dayViewMode},
+              onSelectionChanged: (Set<DayViewMode> newSelection) {
+                settingsProvider.setDayViewMode(newSelection.first);
+              },
+              showSelectedIcon: false,
+            ),
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.upload_file, color: Colors.blue),
             title: const Text('Export Database'),
@@ -139,7 +175,10 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.download_for_offline, color: Colors.green),
+            leading: const Icon(
+              Icons.download_for_offline,
+              color: Colors.green,
+            ),
             title: const Text('Import Database'),
             subtitle: const Text('Restore tasks from a backup file'),
             onTap: () async {
@@ -149,7 +188,9 @@ class SettingsScreen extends StatelessWidget {
                 provider.clearCache();
                 provider.loadTasksForDate(DateTime.now());
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Database imported successfully')),
+                  const SnackBar(
+                    content: Text('Database imported successfully'),
+                  ),
                 );
               }
             },
@@ -183,8 +224,10 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _addSampleTasks(context),
           ),
           ListTile(
-            leading:
-                const Icon(Icons.notification_important, color: Colors.purple),
+            leading: const Icon(
+              Icons.notification_important,
+              color: Colors.purple,
+            ),
             title: const Text('Test Notification'),
             subtitle: const Text('Send an instant notification'),
             onTap: _testNotification,
@@ -198,7 +241,8 @@ class SettingsScreen extends StatelessWidget {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text('Test task scheduled for 10s from now')),
+                    content: Text('Test task scheduled for 10s from now'),
+                  ),
                 );
               }
             },
@@ -206,8 +250,9 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.hourglass_bottom, color: Colors.blue),
             title: const Text('Test Delayed Notification'),
-            subtitle:
-                const Text('Wait 5s in code then show instant notification'),
+            subtitle: const Text(
+              'Wait 5s in code then show instant notification',
+            ),
             onTap: () async {
               await NotificationService.instance.testDelayedNotification();
             },
@@ -223,10 +268,13 @@ class SettingsScreen extends StatelessWidget {
                 leading: const Icon(Icons.info_outline),
                 title: const Text('About'),
                 subtitle: Text(
-                    'Version $version\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar'),
+                  'Version $version\nAuthor: slayernominee\nGitHub: https://github.com/slayernominee/planar',
+                ),
                 isThreeLine: true,
                 onTap: () async {
-                  final url = Uri.parse('https://github.com/slayernominee/planar');
+                  final url = Uri.parse(
+                    'https://github.com/slayernominee/planar',
+                  );
                   if (await canLaunchUrl(url)) {
                     await launchUrl(url, mode: LaunchMode.externalApplication);
                   }

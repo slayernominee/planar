@@ -3,8 +3,9 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
+
 import 'package:file_picker/file_picker.dart';
+import '../models/recurring_task.dart';
 import '../models/task.dart';
 
 class DatabaseHelper {
@@ -25,7 +26,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
@@ -46,6 +47,87 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE tasks ADD COLUMN reminders TEXT');
       // Migrate existing data from single reminderMinutes to reminders CSV
       await db.execute('UPDATE tasks SET reminders = CAST(reminderMinutes AS TEXT) WHERE reminderMinutes IS NOT NULL');
+    }
+    if (oldVersion < 6) {
+      const idType = 'TEXT PRIMARY KEY';
+      const textType = 'TEXT NOT NULL';
+      const textNullableType = 'TEXT';
+      const integerType = 'INTEGER NOT NULL';
+      const integerNullableType = 'INTEGER';
+
+      await db.execute('''
+CREATE TABLE recurring_tasks (
+  id $idType,
+  title $textType,
+  description $textType,
+  recurrence $integerType,
+  startDate $textType,
+  startTime $textNullableType,
+  endTime $textNullableType,
+  colorValue $integerType,
+  iconCodePoint $integerNullableType,
+  reminders $textNullableType,
+  subtasks $textNullableType,
+  lastGeneratedDate $textNullableType
+)
+''');
+      await db.execute('ALTER TABLE tasks ADD COLUMN recurringTaskId TEXT');
+      await db.execute('ALTER TABLE tasks ADD COLUMN isDeleted INTEGER DEFAULT 0');
+
+      // Data Migration for Recurring Tasks
+      final List<Map<String, dynamic>> recurringInstances = await db.query(
+        'tasks',
+        where: 'recurrence != 0 AND seriesId IS NOT NULL',
+        orderBy: 'date ASC',
+      );
+
+      final Map<String, List<Map<String, dynamic>>> seriesGroups = {};
+      for (var instance in recurringInstances) {
+        final seriesId = instance['seriesId'] as String;
+        if (!seriesGroups.containsKey(seriesId)) {
+          seriesGroups[seriesId] = [];
+        }
+        seriesGroups[seriesId]!.add(instance);
+      }
+
+      for (var entry in seriesGroups.entries) {
+        final seriesId = entry.key;
+        final tasks = entry.value;
+        final template = tasks.first;
+        final lastTask = tasks.last;
+
+        // Fetch subtasks for template to preserve structure
+        final subtasksResult = await db.query(
+          'subtasks',
+          columns: ['title'],
+          where: 'taskId = ?',
+          whereArgs: [template['id']],
+        );
+        final subtaskTitles =
+            subtasksResult.map((s) => s['title'] as String).toList();
+
+        await db.insert('recurring_tasks', {
+          'id': seriesId,
+          'title': template['title'],
+          'description': template['description'],
+          'recurrence': template['recurrence'],
+          'startDate': template['date'],
+          'startTime': template['startTime'],
+          'endTime': template['endTime'],
+          'colorValue': template['colorValue'],
+          'iconCodePoint': template['iconCodePoint'],
+          'reminders': template['reminders'],
+          'subtasks': jsonEncode(subtaskTitles),
+          'lastGeneratedDate': lastTask['date'],
+        });
+
+        await db.update(
+          'tasks',
+          {'recurringTaskId': seriesId},
+          where: 'seriesId = ?',
+          whereArgs: [seriesId],
+        );
+      }
     }
   }
 
@@ -74,7 +156,26 @@ CREATE TABLE tasks (
   colorValue $integerType,
   seriesId $textNullableType,
   iconCodePoint $integerNullableType,
-  reminders $textNullableType
+  reminders $textNullableType,
+  recurringTaskId $textNullableType,
+  isDeleted $boolType DEFAULT 0
+)
+''');
+
+    await db.execute('''
+CREATE TABLE recurring_tasks (
+  id $idType,
+  title $textType,
+  description $textType,
+  recurrence $integerType,
+  startDate $textType,
+  startTime $textNullableType,
+  endTime $textNullableType,
+  colorValue $integerType,
+  iconCodePoint $integerNullableType,
+  reminders $textNullableType,
+  subtasks $textNullableType,
+  lastGeneratedDate $textNullableType
 )
 ''');
 
@@ -207,6 +308,52 @@ CREATE TABLE subtasks (
     );
   }
 
+  Future<void> createRecurringTask(RecurringTask task) async {
+    final db = await instance.database;
+    await db.insert('recurring_tasks', task.toMap());
+  }
+
+  Future<RecurringTask?> readRecurringTask(String id) async {
+    final db = await instance.database;
+    final maps = await db.query(
+      'recurring_tasks',
+      columns: null,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (maps.isNotEmpty) {
+      return RecurringTask.fromMap(maps.first);
+    } else {
+      return null;
+    }
+  }
+
+  Future<List<RecurringTask>> readAllRecurringTasks() async {
+    final db = await instance.database;
+    final result = await db.query('recurring_tasks');
+    return result.map((json) => RecurringTask.fromMap(json)).toList();
+  }
+
+  Future<int> updateRecurringTask(RecurringTask task) async {
+    final db = await instance.database;
+    return await db.update(
+      'recurring_tasks',
+      task.toMap(),
+      where: 'id = ?',
+      whereArgs: [task.id],
+    );
+  }
+
+  Future<int> deleteRecurringTask(String id) async {
+    final db = await instance.database;
+    return await db.delete(
+      'recurring_tasks',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deleteTask(String id) async {
     final db = await instance.database;
 
@@ -224,15 +371,25 @@ CREATE TABLE subtasks (
 
   Future<void> exportDatabase() async {
     final tasks = await readAllTasks();
-    final List<Map<String, dynamic>> jsonData = [];
+    final List<Map<String, dynamic>> tasksJson = [];
 
     for (var task in tasks) {
       final taskMap = task.toMap();
       taskMap['subtasks'] = task.subtasks.map((s) => s.toMap()).toList();
-      jsonData.add(taskMap);
+      tasksJson.add(taskMap);
     }
 
-    final String jsonString = jsonEncode(jsonData);
+    final recurringTasks = await readAllRecurringTasks();
+    final List<Map<String, dynamic>> recurringTasksJson =
+        recurringTasks.map((t) => t.toMap()).toList();
+
+    final Map<String, dynamic> backupData = {
+      'version': 1,
+      'tasks': tasksJson,
+      'recurringTasks': recurringTasksJson,
+    };
+
+    final String jsonString = jsonEncode(backupData);
     final List<int> bytes = utf8.encode(jsonString);
 
     await FilePicker.platform.saveFile(
@@ -254,7 +411,21 @@ CREATE TABLE subtasks (
       if (result != null && result.files.single.path != null) {
         File file = File(result.files.single.path!);
         String content = await file.readAsString();
-        List<dynamic> jsonData = jsonDecode(content);
+        dynamic decoded = jsonDecode(content);
+
+        List<dynamic> tasksData;
+        List<dynamic> recurringTasksData = [];
+
+        if (decoded is List) {
+          // Legacy backup format
+          tasksData = decoded;
+        } else if (decoded is Map) {
+          // New backup format
+          tasksData = decoded['tasks'] ?? [];
+          recurringTasksData = decoded['recurringTasks'] ?? [];
+        } else {
+          return false;
+        }
 
         final db = await instance.database;
 
@@ -262,15 +433,22 @@ CREATE TABLE subtasks (
           // Foreign keys ON DELETE CASCADE will handle subtasks, but manual clear is safer
           await txn.delete('subtasks');
           await txn.delete('tasks');
+          await txn.delete('recurring_tasks');
 
-          for (var taskData in jsonData) {
+          for (var taskData in tasksData) {
             Map<String, dynamic> taskMap = Map<String, dynamic>.from(taskData);
             List<dynamic> subtasksData = taskMap.remove('subtasks') ?? [];
 
             await txn.insert('tasks', taskMap);
             for (var subtaskData in subtasksData) {
-              await txn.insert('subtasks', Map<String, dynamic>.from(subtaskData));
+              await txn.insert(
+                  'subtasks', Map<String, dynamic>.from(subtaskData));
             }
+          }
+
+          for (var recurringTaskData in recurringTasksData) {
+            await txn.insert('recurring_tasks',
+                Map<String, dynamic>.from(recurringTaskData));
           }
         });
         return true;

@@ -57,6 +57,8 @@ class Task {
   String? seriesId;
   int? iconCodePoint;
   List<int> reminders;
+  String? recurringTaskId;
+  bool isDeleted;
 
   Task({
     String? id,
@@ -72,6 +74,8 @@ class Task {
     this.seriesId,
     this.iconCodePoint,
     this.reminders = const [],
+    this.recurringTaskId,
+    this.isDeleted = false,
   }) : id = id ?? const Uuid().v4();
 
   Map<String, dynamic> toMap() {
@@ -88,6 +92,8 @@ class Task {
       'seriesId': seriesId,
       'iconCodePoint': iconCodePoint,
       'reminders': reminders.join(','),
+      'recurringTaskId': recurringTaskId,
+      'isDeleted': isDeleted ? 1 : 0,
     };
   }
 
@@ -116,6 +122,8 @@ class Task {
       seriesId: map['seriesId'],
       iconCodePoint: map['iconCodePoint'],
       reminders: remindersList,
+      recurringTaskId: map['recurringTaskId'],
+      isDeleted: map['isDeleted'] == 1,
     );
   }
 
@@ -133,6 +141,8 @@ class Task {
     String? seriesId,
     int? iconCodePoint,
     List<int>? reminders,
+    String? recurringTaskId,
+    bool? isDeleted,
   }) {
     return Task(
       id: id ?? this.id,
@@ -148,6 +158,8 @@ class Task {
       seriesId: seriesId ?? this.seriesId,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
       reminders: reminders ?? this.reminders,
+      recurringTaskId: recurringTaskId ?? this.recurringTaskId,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 }

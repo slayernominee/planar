@@ -193,6 +193,7 @@ CREATE TABLE subtasks (
   Future<void> createTask(Task task) async {
     final db = await instance.database;
 
+    print('DB: Create task ${task.id}, Date=${task.date}, RecID=${task.recurringTaskId}');
     await db.insert('tasks', task.toMap());
 
     for (var subtask in task.subtasks) {
@@ -259,13 +260,21 @@ CREATE TABLE subtasks (
 
     // For simplicity and performance, assume `date` field in DB stores the start of the day.
     final dateStr = DateTime(date.year, date.month, date.day).toIso8601String();
+    final queryArg = '${dateStr.split('T')[0]}%';
+
+    print('DB: Reading tasks for date LIKE $queryArg');
 
     final result = await db.query(
       'tasks',
       where: 'date LIKE ?',
-      whereArgs: ['${dateStr.split('T')[0]}%'],
+      whereArgs: [queryArg],
       orderBy: orderBy
     );
+
+    print('DB: Found ${result.length} rows');
+    for (var row in result) {
+      print('DB: Row found: ID=${row['id']}, Date=${row['date']}, RecID=${row['recurringTaskId']}, Del=${row['isDeleted']}');
+    }
 
     List<Task> tasks = result.map((json) => Task.fromMap(json)).toList();
 
@@ -279,6 +288,7 @@ CREATE TABLE subtasks (
   Future<int> updateTask(Task task) async {
     final db = await instance.database;
 
+    print('DB: Update task ${task.id}, Date=${task.date}, RecID=${task.recurringTaskId}');
     int result = await db.update(
       'tasks',
       task.toMap(),
@@ -310,6 +320,7 @@ CREATE TABLE subtasks (
 
   Future<void> createRecurringTask(RecurringTask task) async {
     final db = await instance.database;
+    print('DB: Creating recurring task ${task.id} (${task.title})');
     await db.insert('recurring_tasks', task.toMap());
   }
 
@@ -331,12 +342,15 @@ CREATE TABLE subtasks (
 
   Future<List<RecurringTask>> readAllRecurringTasks() async {
     final db = await instance.database;
+    print('DB: Reading all recurring tasks');
     final result = await db.query('recurring_tasks');
+    print('DB: Found ${result.length} recurring rules');
     return result.map((json) => RecurringTask.fromMap(json)).toList();
   }
 
   Future<int> updateRecurringTask(RecurringTask task) async {
     final db = await instance.database;
+    print('DB: Updating recurring task ${task.id}');
     return await db.update(
       'recurring_tasks',
       task.toMap(),
@@ -347,6 +361,7 @@ CREATE TABLE subtasks (
 
   Future<int> deleteRecurringTask(String id) async {
     final db = await instance.database;
+    print('DB: Deleting recurring task $id');
     return await db.delete(
       'recurring_tasks',
       where: 'id = ?',

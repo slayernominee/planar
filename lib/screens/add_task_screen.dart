@@ -187,11 +187,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
+    print('DEBUG: _saveTask called. ID=$_taskId');
+
     final newTask = Task(
       id: _taskId,
       title: _titleController.text,
       description: _descriptionController.text,
-      date: _selectedDate,
+      date: DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day),
       startTime: _startTime,
       endTime: _endTime,
       colorValue: _selectedColor,
@@ -200,12 +202,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       isDone: widget.taskToEdit?.isDone ?? false,
       iconCodePoint: _selectedIconCodePoint,
       seriesId: widget.taskToEdit?.seriesId,
+      recurringTaskId: widget.taskToEdit?.recurringTaskId ??
+          widget.taskToEdit?.seriesId,
       reminders: _reminders,
     );
 
     final provider = context.read<TaskProvider>();
+    // Check if it's a recurring task instance (has recurringTaskId or seriesId)
+    final isRecurringInstance = widget.taskToEdit != null &&
+        (widget.taskToEdit!.recurringTaskId != null ||
+            widget.taskToEdit!.seriesId != null);
+
+    print('DEBUG: isRecurringInstance=$isRecurringInstance');
+
     if (widget.taskToEdit != null) {
-      if (widget.taskToEdit!.seriesId != null) {
+      if (isRecurringInstance) {
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -228,15 +239,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  // Decouple this instance from the series to avoid accidental
-                  // duplication or future updates affecting it.
-                  final standaloneTask = newTask.copyWith(
-                    seriesId: null,
-                    recurrence: (widget.taskToEdit?.recurrence == _recurrence)
-                        ? RecurrenceType.none
-                        : _recurrence,
+                  // Create an exception for this instance.
+                  // It must have recurringTaskId set so it replaces the generated instance.
+                  // It should NOT have recurrence set (it's a single instance).
+                  final exceptionTask = newTask.copyWith(
+                    seriesId: null, // Legacy field, can be null for exception
+                    recurrence: RecurrenceType.none,
                   );
-                  await provider.updateTask(standaloneTask);
+
+                  // If it's a generated task (ID contains '_'), it's not in DB yet.
+                  // We must create it via addTask.
+                  if (widget.taskToEdit!.id.contains('_')) {
+                    print('DEBUG: Adding generated task exception');
+                    await provider.addTask(exceptionTask);
+                  } else {
+                    print('DEBUG: Updating existing task exception');
+                    await provider.updateTask(exceptionTask);
+                  }
+
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
@@ -247,14 +267,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  // Only propagate recurrence change if it actually changed,
-                  // otherwise keep child tasks as non-recurring.
-                  final taskToUpdate =
-                      (widget.taskToEdit?.recurrence == _recurrence)
-                      ? newTask.copyWith(recurrence: RecurrenceType.none)
-                      : newTask;
                   await provider.updateSeries(
-                    taskToUpdate,
+                    newTask,
                     all: false,
                     futureFrom: newTask.date,
                   );
@@ -268,12 +282,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               ),
               TextButton(
                 onPressed: () async {
-                  // Only propagate recurrence change if it actually changed.
-                  final taskToUpdate =
-                      (widget.taskToEdit?.recurrence == _recurrence)
-                      ? newTask.copyWith(recurrence: RecurrenceType.none)
-                      : newTask;
-                  await provider.updateSeries(taskToUpdate, all: true);
+                  await provider.updateSeries(newTask, all: true);
                   if (ctx.mounted) Navigator.of(ctx).pop();
                   if (mounted) Navigator.of(context).pop();
                 },
@@ -283,13 +292,24 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           ),
         );
       } else {
-        if (widget.taskToEdit!.recurrence == _recurrence) {
-          newTask.recurrence = RecurrenceType.none;
+        // Handle conversion from Regular to Recurring
+        if (_recurrence != RecurrenceType.none &&
+            widget.taskToEdit!.recurrence == RecurrenceType.none) {
+          print('DEBUG: Promoting to recurring');
+          // Promoting to recurring: Delete original, create new series
+          await provider.deleteTask(widget.taskToEdit!.id);
+          await provider.addTask(newTask);
+        } else {
+          print('DEBUG: Updating regular task');
+          if (widget.taskToEdit!.recurrence == _recurrence) {
+            newTask.recurrence = RecurrenceType.none;
+          }
+          await provider.updateTask(newTask);
         }
-        await provider.updateTask(newTask);
         if (mounted) Navigator.of(context).pop();
       }
     } else {
+      print('DEBUG: Adding new task');
       await provider.addTask(newTask);
       if (mounted) Navigator.of(context).pop();
     }

@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Load initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TaskProvider>().loadTasksForDate(_selectedDate);
+      context.read<TaskProvider>().setSelectedDate(_selectedDate);
     });
   }
 
@@ -55,8 +55,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedDate = newDate;
     });
 
-    // Preload data for the new date
-    context.read<TaskProvider>().loadTasksForDate(newDate);
+    // Update provider state
+    context.read<TaskProvider>().setSelectedDate(newDate);
   }
 
   void _jumpToDate(DateTime date, {bool animate = false}) {
